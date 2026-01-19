@@ -1,9 +1,11 @@
-core.Microsoft*
-core.mongo*
-core.python*
-env.py
-__pycache__/
-*.py[cod]
 node_modules/
-.github/
-cloudinary_python.txt
+.env
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+*.log
+uploads/
+dist/
+assets/icons/*.png    # Exclude icon files (you'll add your own)
+!assets/icons/placeholder.txt

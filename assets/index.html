@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Examiner - AI Data Analysis</title>
+    
+    <!-- Favicon References (Updated to your structure) -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
+    <link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#10a37f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="AI-powered data analysis tool for CSV, Excel files with automatic chart generation">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-chart-line"></i> Data Analysis</h1>
+                <button class="new-chat-btn" id="newChat">
+                    <i class="fas fa-plus"></i> New Analysis
+                </button>
+            </div>
+
+            <div class="file-upload-section">
+                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.txt" style="display: none;">
+                <label for="fileInput" class="upload-btn">
+                    <i class="fas fa-file-upload"></i> Upload File
+                </label>
+                <p class="upload-hint">Supports CSV, Excel files</p>
+            </div>
+
+            <div class="paste-section">
+                <h3><i class="fas fa-paste"></i> Or Paste Data</h3>
+                <textarea id="dataInput" placeholder="Paste your data here (CSV, JSON, or tabular data)..."></textarea>
+                <button id="analyzePaste" class="analyze-btn">
+                    <i class="fas fa-magic"></i> Analyze Pasted Data
+                </button>
+            </div>
+
+            <div class="history">
+                <h3><i class="fas fa-history"></i> Recent Analyses</h3>
+                <div id="analysisHistory"></div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="main-content">
+            <header class="chat-header">
+                <div class="header-left">
+                    <button class="menu-btn" id="menuBtn">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2>Data Analysis Assistant</h2>
+                </div>
+                <div class="header-right">
+                    <button class="install-btn" id="installBtn">
+                        <i class="fas fa-download"></i> Install App
+                    </button>
+                </div>
+            </header>
+
+            <!-- Chat Messages -->
+            <div class="chat-container" id="chatContainer">
+                <div class="welcome-message">
+                    <h2><i class="fas fa-robot"></i> Welcome to Data Analysis Assistant!</h2>
+                    <p>Upload a CSV/Excel file or paste your data to get started with AI-powered analysis and visualization.</p>
+
+                    <div class="features">
+                        <div class="feature">
+                            <i class="fas fa-file-csv"></i>
+                            <h4>File Analysis</h4>
+                            <p>Upload CSV, Excel files</p>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-chart-bar"></i>
+                            <h4>Visual Charts</h4>
+                            <p>Automatic chart generation</p>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-comment-alt"></i>
+                            <h4>AI Insights</h4>
+                            <p>Plain English explanations</p>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-mobile-alt"></i>
+                            <h4>PWA Support</h4>
+                            <p>Works offline on mobile</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Container -->
+            <div class="chart-container" id="chartContainer">
+                <h3><i class="fas fa-chart-bar"></i> Data Visualization</h3>
+                <div class="chart-wrapper">
+                    <canvas id="dataChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea
+                        id="messageInput"
+                        placeholder="Ask a question about your data or type your analysis request..."
+                        rows="1"></textarea>
+                    <div class="input-buttons">
+                        <button id="attachFile" class="icon-btn" title="Attach file">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <button id="sendMessage" class="send-btn">
+                            <i class="fas fa-paper-plane"></i> Analyze
+                        </button>
+                    </div>
+                </div>
+                <div class="file-preview" id="filePreview"></div>
+                <p class="hint">
+                    Upload files up to 10MB. Ask questions like
+                    "What trends do you see?" or "Create a summary"
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal" id="loadingModal">
+        <div class="modal-content">
+            <div class="loader"></div>
+            <p>Analyzing your data...</p>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

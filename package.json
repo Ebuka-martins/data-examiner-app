@@ -1,0 +1,38 @@
+{
+  "name": "data-examiner-app",
+  "version": "1.0.0",
+  "description": "AI-powered data analysis PWA for CSV/Excel files with chart visualization",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "fix-audit": "npm audit fix --force",
+    "clean-install": "rm -rf node_modules package-lock.json && npm install"
+  },
+  "keywords": [
+    "pwa",
+    "data-analysis",
+    "csv",
+    "excel",
+    "charts",
+    "ai"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "multer": "^2.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
