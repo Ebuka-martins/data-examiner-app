@@ -1,7 +1,7 @@
 {
   "name": "Data Examiner",
   "short_name": "DataExaminer",
-  "description": "AI-powered data analysis and visualization",
+  "description": "AI-powered data analysis and visualization tool",
   "start_url": "/data-examiner-app/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -21,13 +21,34 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "utilities"],
+  "categories": ["productivity", "utilities", "business"],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Data Examiner Desktop View"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "label": "Data Examiner Mobile View"
+    }
+  ],
   "shortcuts": [
     {
       "name": "New Analysis",
-      "short_name": "New",
+      "short_name": "Analyze",
       "description": "Start a new data analysis",
-      "url": "/?new=true"
+      "url": "/?action=new"
+    },
+    {
+      "name": "Upload File",
+      "short_name": "Upload",
+      "description": "Upload and analyze a file",
+      "url": "/?action=upload"
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }

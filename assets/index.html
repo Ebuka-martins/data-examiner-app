@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Examiner - AI Data Analysis</title>
     
-    <!-- Favicon References (Updated to your structure) -->
+    <!-- Favicon References -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
@@ -25,129 +25,262 @@
     <meta name="theme-color" content="#10a37f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="AI-powered data analysis tool for CSV, Excel files with automatic chart generation">
+    <meta name="description" content="Upload CSV/Excel files or paste data for instant AI-powered analysis with visual charts">
 </head>
 <body>
     <div class="container">
         <!-- Sidebar -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h1><i class="fas fa-chart-line"></i> Data Analysis</h1>
-                <button class="new-chat-btn" id="newChat">
+                <div class="logo-container">
+                    <i class="fas fa-chart-line logo-icon"></i>
+                    <h1>Data Examiner</h1>
+                </div>
+                <button class="new-analysis-btn" id="newChat">
                     <i class="fas fa-plus"></i> New Analysis
                 </button>
             </div>
-
-            <div class="file-upload-section">
-                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.txt" style="display: none;">
-                <label for="fileInput" class="upload-btn">
-                    <i class="fas fa-file-upload"></i> Upload File
+            
+            <!-- File Upload Section -->
+            <div class="sidebar-section">
+                <h3><i class="fas fa-file-upload"></i> Upload Files</h3>
+                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.json,.txt" style="display: none;">
+                <label for="fileInput" class="upload-btn" id="uploadBtn">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Choose File</span>
                 </label>
-                <p class="upload-hint">Supports CSV, Excel files</p>
+                <div class="file-info" id="fileInfo">
+                    <p>Supported: CSV, Excel, JSON, Text</p>
+                    <p>Max size: 10MB</p>
+                </div>
             </div>
 
-            <div class="paste-section">
-                <h3><i class="fas fa-paste"></i> Or Paste Data</h3>
-                <textarea id="dataInput" placeholder="Paste your data here (CSV, JSON, or tabular data)..."></textarea>
-                <button id="analyzePaste" class="analyze-btn">
-                    <i class="fas fa-magic"></i> Analyze Pasted Data
-                </button>
+            <!-- Paste Data Section -->
+            <div class="sidebar-section">
+                <h3><i class="fas fa-paste"></i> Paste Data</h3>
+                <div class="paste-container">
+                    <textarea id="dataInput" placeholder="Paste CSV, JSON, or any data here..."></textarea>
+                    <button id="analyzePaste" class="analyze-btn">
+                        <i class="fas fa-magic"></i> Analyze
+                    </button>
+                </div>
             </div>
 
-            <div class="history">
+            <!-- Recent Analyses -->
+            <div class="sidebar-section history-section">
                 <h3><i class="fas fa-history"></i> Recent Analyses</h3>
-                <div id="analysisHistory"></div>
-            </div>
-        </div>
-
-        <!-- Main Chat Area -->
-        <div class="main-content">
-            <header class="chat-header">
-                <div class="header-left">
-                    <button class="menu-btn" id="menuBtn">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <h2>Data Analysis Assistant</h2>
-                </div>
-                <div class="header-right">
-                    <button class="install-btn" id="installBtn">
-                        <i class="fas fa-download"></i> Install App
-                    </button>
-                </div>
-            </header>
-
-            <!-- Chat Messages -->
-            <div class="chat-container" id="chatContainer">
-                <div class="welcome-message">
-                    <h2><i class="fas fa-robot"></i> Welcome to Data Analysis Assistant!</h2>
-                    <p>Upload a CSV/Excel file or paste your data to get started with AI-powered analysis and visualization.</p>
-
-                    <div class="features">
-                        <div class="feature">
-                            <i class="fas fa-file-csv"></i>
-                            <h4>File Analysis</h4>
-                            <p>Upload CSV, Excel files</p>
-                        </div>
-                        <div class="feature">
-                            <i class="fas fa-chart-bar"></i>
-                            <h4>Visual Charts</h4>
-                            <p>Automatic chart generation</p>
-                        </div>
-                        <div class="feature">
-                            <i class="fas fa-comment-alt"></i>
-                            <h4>AI Insights</h4>
-                            <p>Plain English explanations</p>
-                        </div>
-                        <div class="feature">
-                            <i class="fas fa-mobile-alt"></i>
-                            <h4>PWA Support</h4>
-                            <p>Works offline on mobile</p>
-                        </div>
+                <div class="history-list" id="analysisHistory">
+                    <div class="history-empty">
+                        <i class="fas fa-inbox"></i>
+                        <p>No analyses yet</p>
                     </div>
                 </div>
             </div>
 
+            <!-- Status & Info -->
+            <div class="sidebar-footer">
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot online"></span>
+                    <span>Online</span>
+                </div>
+                <div class="app-version">v1.0.0</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2><i class="fas fa-robot"></i> Data Analysis Assistant</h2>
+                </div>
+                <div class="header-right">
+                    <button class="install-btn" id="installBtn" style="display: none;">
+                        <i class="fas fa-download"></i> Install App
+                    </button>
+                    <button class="theme-toggle" id="themeToggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Chat Container -->
+            <div class="chat-container" id="chatContainer">
+                <!-- Welcome Message -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-content">
+                        <div class="hero-section">
+                            <div class="hero-icon">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <h1>Welcome to Data Examiner</h1>
+                            <p class="hero-subtitle">AI-powered data analysis made simple</p>
+                        </div>
+                        
+                        <div class="quick-start">
+                            <h3>Get Started Quickly</h3>
+                            <div class="quick-actions">
+                                <div class="quick-action" id="quickUpload">
+                                    <div class="action-icon">
+                                        <i class="fas fa-file-upload"></i>
+                                    </div>
+                                    <h4>Upload File</h4>
+                                    <p>CSV, Excel, JSON, Text</p>
+                                </div>
+                                <div class="quick-action" id="quickPaste">
+                                    <div class="action-icon">
+                                        <i class="fas fa-paste"></i>
+                                    </div>
+                                    <h4>Paste Data</h4>
+                                    <p>CSV, JSON, or text</p>
+                                </div>
+                                <div class="quick-action" id="quickSample">
+                                    <div class="action-icon">
+                                        <i class="fas fa-vial"></i>
+                                    </div>
+                                    <h4>Try Sample</h4>
+                                    <p>Test with sample data</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="features-grid">
+                            <div class="feature">
+                                <i class="fas fa-brain"></i>
+                                <h4>AI Analysis</h4>
+                                <p>Intelligent insights using Groq AI</p>
+                            </div>
+                            <div class="feature">
+                                <i class="fas fa-chart-pie"></i>
+                                <h4>Visual Charts</h4>
+                                <p>Automatic chart generation</p>
+                            </div>
+                            <div class="feature">
+                                <i class="fas fa-mobile-alt"></i>
+                                <h4>PWA Ready</h4>
+                                <p>Install on any device</p>
+                            </div>
+                            <div class="feature">
+                                <i class="fas fa-bolt"></i>
+                                <h4>Fast Processing</h4>
+                                <p>Real-time analysis</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages Container -->
+                <div class="messages-container" id="messagesContainer"></div>
+            </div>
+
             <!-- Chart Container -->
-            <div class="chart-container" id="chartContainer">
-                <h3><i class="fas fa-chart-bar"></i> Data Visualization</h3>
+            <div class="chart-section" id="chartSection">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-line"></i> Data Visualization</h3>
+                    <div class="chart-controls">
+                        <select id="chartType" class="chart-select">
+                            <option value="line">Line Chart</option>
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="doughnut">Doughnut Chart</option>
+                        </select>
+                        <button id="exportChart" class="chart-btn">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
                 <div class="chart-wrapper">
                     <canvas id="dataChart"></canvas>
                 </div>
             </div>
 
             <!-- Input Area -->
-            <div class="input-container">
-                <div class="input-wrapper">
-                    <textarea
-                        id="messageInput"
-                        placeholder="Ask a question about your data or type your analysis request..."
-                        rows="1"></textarea>
-                    <div class="input-buttons">
-                        <button id="attachFile" class="icon-btn" title="Attach file">
-                            <i class="fas fa-paperclip"></i>
-                        </button>
-                        <button id="sendMessage" class="send-btn">
-                            <i class="fas fa-paper-plane"></i> Analyze
+            <div class="input-section">
+                <div class="input-container">
+                    <div class="file-indicator" id="fileIndicator">
+                        <i class="fas fa-file"></i>
+                        <span id="fileName">No file selected</span>
+                        <button class="clear-file" id="clearFile">
+                            <i class="fas fa-times"></i>
                         </button>
                     </div>
+                    
+                    <div class="input-group">
+                        <textarea 
+                            id="messageInput" 
+                            placeholder="Ask questions about your data or request specific analysis..."
+                            rows="1"></textarea>
+                        <div class="input-actions">
+                            <button id="attachBtn" class="action-btn" title="Attach file">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <button id="sendBtn" class="send-btn">
+                                <i class="fas fa-paper-plane"></i> Analyze
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="input-hints">
+                        <span class="hint">Try: "Show trends", "Find correlations", "Summarize data", "Create visualization"</span>
+                    </div>
                 </div>
-                <div class="file-preview" id="filePreview"></div>
-                <p class="hint">
-                    Upload files up to 10MB. Ask questions like
-                    "What trends do you see?" or "Create a summary"
-                </p>
             </div>
         </div>
     </div>
 
-    <!-- Loading Modal -->
-    <div class="modal" id="loadingModal">
-        <div class="modal-content">
-            <div class="loader"></div>
-            <p>Analyzing your data...</p>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner">
+                <div class="spinner-circle"></div>
+            </div>
+            <h3>Analyzing Data</h3>
+            <p>Processing your request...</p>
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
         </div>
     </div>
 
-    <script src="/app.js"></script>
+    <!-- Message Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Import JavaScript files -->
+    <script src="/src/app.js"></script>
+    <script src="/src/api.js"></script>
+    <script src="/src/chart.js"></script>
+    <script src="/src/file-analyzer.js"></script>
+    
+    <!-- Sample Data -->
+    <script>
+        // Sample data for testing
+        const sampleData = {
+            csv: `Date,Sales,Expenses,Profit,Region
+2024-01-01,15000,8000,7000,North
+2024-01-02,18000,9000,9000,South
+2024-01-03,22000,11000,11000,East
+2024-01-04,19000,9500,9500,West
+2024-01-05,25000,12000,13000,North
+2024-01-06,21000,10500,10500,South
+2024-01-07,23000,11500,11500,East`,
+            
+            json: JSON.stringify([
+                { product: "Laptop", sales: 45, revenue: 67500, category: "Electronics" },
+                { product: "Phone", sales: 120, revenue: 84000, category: "Electronics" },
+                { product: "Tablet", sales: 30, revenue: 15000, category: "Electronics" },
+                { product: "Chair", sales: 85, revenue: 42500, category: "Furniture" },
+                { product: "Desk", sales: 40, revenue: 32000, category: "Furniture" },
+                { product: "Monitor", sales: 60, revenue: 30000, category: "Electronics" }
+            ], null, 2)
+        };
+        
+        // Make sampleData available globally
+        window.sampleData = sampleData;
+    </script>
 </body>
 </html>

@@ -1,273 +1,395 @@
+// Chart Manager for Data Examiner
 class ChartManager {
-  constructor(canvasElement) {
-    this.canvas = canvasElement;
-    this.chart = null;
-    this.defaultColors = [
-      '#10a37f', '#5436da', '#ff6384', '#36a2eb', '#ffce56',
-      '#4bc0c0', '#9966ff', '#ff9f40', '#ff6384', '#c9cbcf'
-    ];
-  }
-
-  initialize() {
-    if (!this.canvas) {
-      console.error('Canvas element not found');
-      return;
-    }
-
-    const ctx = this.canvas.getContext('2d');
-    
-    // Initial empty chart
-    this.chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'No data',
-          data: [],
-          borderColor: '#e5e5e7',
-          backgroundColor: 'rgba(229, 229, 231, 0.2)',
-          borderWidth: 1
-        }]
-      },
-      options: this.getDefaultOptions()
-    });
-  }
-
-  getDefaultOptions() {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top',
-          labels: {
-            font: {
-              size: 12
-            }
-          }
-        },
-        tooltip: {
-          mode: 'index',
-          intersect: false,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          titleFont: { size: 12 },
-          bodyFont: { size: 11 },
-          padding: 10
-        }
-      },
-      scales: {
-        x: {
-          grid: {
-            color: 'rgba(0, 0, 0, 0.05)'
-          },
-          ticks: {
-            font: {
-              size: 10
+    constructor(canvasElement) {
+        this.canvas = canvasElement;
+        this.currentChart = null;
+        this.chartData = null;
+        this.defaultOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: 'var(--text-primary)',
+                        font: {
+                            size: 12,
+                            family: "'Segoe UI', Roboto, sans-serif"
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'var(--bg-card)',
+                    titleColor: 'var(--text-primary)',
+                    bodyColor: 'var(--text-secondary)',
+                    borderColor: 'var(--border-color)',
+                    borderWidth: 1,
+                    cornerRadius: 6,
+                    padding: 12,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y.toLocaleString();
+                            }
+                            return label;
+                        }
+                    }
+                }
             },
-            maxRotation: 45
-          }
-        },
-        y: {
-          grid: {
-            color: 'rgba(0, 0, 0, 0.05)'
-          },
-          ticks: {
-            font: {
-              size: 10
+            scales: {
+                x: {
+                    grid: {
+                        color: 'var(--border-color)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: 'var(--text-secondary)',
+                        maxRotation: 45
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'var(--border-color)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: 'var(--text-secondary)',
+                        callback: function(value) {
+                            if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                            if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+                            return value;
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            },
+            hover: {
+                animationDuration: 0
             }
-          },
-          beginAtZero: true
-        }
-      },
-      interaction: {
-        intersect: false,
-        mode: 'nearest'
-      },
-      animation: {
-        duration: 1000,
-        easing: 'easeOutQuart'
-      }
-    };
-  }
-
-  updateChart(data, type = 'auto') {
-    if (!this.chart) {
-      this.initialize();
-    }
-
-    if (!data || !data.datasets || data.datasets.length === 0) {
-      this.showNoDataMessage();
-      return;
-    }
-
-    // Determine chart type if auto
-    const chartType = type === 'auto' ? this.determineChartType(data) : type;
-
-    // Update chart with animation
-    this.chart.data = this.prepareChartData(data, chartType);
-    this.chart.options = this.getChartOptions(chartType, data);
-    this.chart.type = chartType;
-
-    // Add colors if not provided
-    this.chart.data.datasets.forEach((dataset, index) => {
-      if (!dataset.backgroundColor) {
-        dataset.backgroundColor = this.getColor(index, 0.2);
-      }
-      if (!dataset.borderColor) {
-        dataset.borderColor = this.getColor(index, 1);
-      }
-    });
-
-    this.chart.update('reset');
-  }
-
-  determineChartType(data) {
-    const dataset = data.datasets[0];
-    
-    if (data.labels && data.labels.length <= 7) {
-      // Small number of categories - use bar chart
-      return 'bar';
-    } else if (dataset.data && dataset.data.length > 20) {
-      // Large dataset - use line chart
-      return 'line';
-    } else if (this.isTimeSeries(data.labels)) {
-      // Time series data
-      return 'line';
-    } else {
-      // Default to bar chart
-      return 'bar';
-    }
-  }
-
-  isTimeSeries(labels) {
-    if (!labels || labels.length < 2) return false;
-    
-    // Check for date patterns
-    const datePatterns = [
-      /\d{4}-\d{2}-\d{2}/, // YYYY-MM-DD
-      /\d{2}\/\d{2}\/\d{4}/, // MM/DD/YYYY
-      /\d{2}\/\d{2}\/\d{2}/, // MM/DD/YY
-      /[A-Za-z]{3} \d{1,2}/, // Jan 1
-      /\d{1,2}:[0-5]\d/ // HH:MM
-    ];
-    
-    return labels.some(label => 
-      datePatterns.some(pattern => pattern.test(label.toString()))
-    );
-  }
-
-  prepareChartData(data, chartType) {
-    const preparedData = {
-      labels: data.labels || [],
-      datasets: data.datasets.map((dataset, index) => ({
-        label: dataset.label || `Dataset ${index + 1}`,
-        data: dataset.data || [],
-        backgroundColor: dataset.backgroundColor || this.getColor(index, 0.2),
-        borderColor: dataset.borderColor || this.getColor(index, 1),
-        borderWidth: dataset.borderWidth || 2,
-        fill: chartType === 'line' ? (dataset.fill !== undefined ? dataset.fill : true) : false,
-        tension: chartType === 'line' ? (dataset.tension || 0.1) : undefined,
-        borderRadius: chartType === 'bar' ? (dataset.borderRadius || 4) : undefined
-      }))
-    };
-
-    // For pie/doughnut charts, only show first dataset
-    if (chartType === 'pie' || chartType === 'doughnut') {
-      if (preparedData.datasets.length > 1) {
-        preparedData.datasets = [preparedData.datasets[0]];
-      }
-    }
-
-    return preparedData;
-  }
-
-  getChartOptions(chartType, data) {
-    const options = this.getDefaultOptions();
-
-    switch (chartType) {
-      case 'pie':
-      case 'doughnut':
-        options.plugins.legend.position = 'right';
-        options.cutout = chartType === 'doughnut' ? '50%' : 0;
-        break;
-        
-      case 'bar':
-        options.indexAxis = 'x';
-        options.scales.x.stacked = data.datasets.length > 1;
-        options.scales.y.stacked = data.datasets.length > 1;
-        break;
-        
-      case 'line':
-        options.scales.x = {
-          ...options.scales.x,
-          type: this.isTimeSeries(data.labels) ? 'time' : 'category',
-          time: this.isTimeSeries(data.labels) ? {
-            unit: 'day',
-            tooltipFormat: 'MMM d, yyyy'
-          } : undefined
         };
-        break;
+        
+        this.colorPalettes = {
+            primary: [
+                'rgba(16, 163, 127, 0.8)',
+                'rgba(102, 126, 234, 0.8)',
+                'rgba(255, 107, 107, 0.8)',
+                'rgba(255, 159, 64, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(54, 162, 235, 0.8)'
+            ],
+            light: [
+                'rgba(16, 163, 127, 0.2)',
+                'rgba(102, 126, 234, 0.2)',
+                'rgba(255, 107, 107, 0.2)',
+                'rgba(255, 159, 64, 0.2)',
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(153, 102, 255, 0.2)',
+                'rgba(255, 205, 86, 0.2)',
+                'rgba(54, 162, 235, 0.2)'
+            ]
+        };
     }
 
-    return options;
-  }
+    initialize() {
+        if (!this.canvas) {
+            console.error('Canvas element not found');
+            return;
+        }
 
-  getColor(index, alpha = 1) {
-    const color = this.defaultColors[index % this.defaultColors.length];
-    
-    if (alpha === 1) return color;
-    
-    // Convert hex to rgba
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
-    
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-
-  showNoDataMessage() {
-    if (!this.chart) return;
-
-    this.chart.data = {
-      labels: ['No Data Available'],
-      datasets: [{
-        label: 'No Data',
-        data: [1],
-        backgroundColor: 'rgba(229, 229, 231, 0.5)',
-        borderColor: 'rgba(229, 229, 231, 1)',
-        borderWidth: 1
-      }]
-    };
-    
-    this.chart.options.plugins.tooltip = {
-      enabled: false
-    };
-    
-    this.chart.update();
-  }
-
-  exportChart(format = 'png') {
-    if (!this.chart) return null;
-
-    switch (format) {
-      case 'png':
-        return this.canvas.toDataURL('image/png');
-      case 'jpeg':
-        return this.canvas.toDataURL('image/jpeg');
-      case 'svg':
-        // For SVG, we would need a different approach
-        return this.canvas.toDataURL('image/svg+xml');
-      default:
-        return this.canvas.toDataURL('image/png');
+        const ctx = this.canvas.getContext('2d');
+        
+        // Initial empty chart
+        this.currentChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['No Data'],
+                datasets: [{
+                    label: 'Data',
+                    data: [0],
+                    borderColor: 'var(--border-color)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                    borderWidth: 1,
+                    fill: false
+                }]
+            },
+            options: this.getOptions('line')
+        });
     }
-  }
 
-  destroy() {
-    if (this.chart) {
-      this.chart.destroy();
-      this.chart = null;
+    updateChart(data, type = 'auto') {
+        if (!this.currentChart) {
+            this.initialize();
+        }
+
+        if (!data || !data.datasets || data.datasets.length === 0) {
+            this.showNoData();
+            return;
+        }
+
+        // Store the data
+        this.chartData = data;
+        
+        // Determine chart type if auto
+        const chartType = type === 'auto' ? this.determineChartType(data) : type;
+        
+        // Prepare data for chart
+        const chartData = this.prepareChartData(data, chartType);
+        
+        // Update chart
+        this.currentChart.data = chartData;
+        this.currentChart.options = this.getOptions(chartType);
+        this.currentChart.type = chartType;
+        
+        // Apply colors
+        this.applyColors();
+        
+        // Update with animation
+        this.currentChart.update('reset');
     }
-  }
+
+    updateChartType(type) {
+        if (!this.currentChart || !this.chartData) return;
+        
+        this.updateChart(this.chartData, type);
+    }
+
+    determineChartType(data) {
+        const dataset = data.datasets[0];
+        
+        if (!dataset || !dataset.data) return 'bar';
+        
+        // If we have categorical data with few items
+        if (data.labels && data.labels.length <= 7) {
+            return 'bar';
+        }
+        
+        // If data seems sequential
+        if (this.isSequentialData(dataset.data)) {
+            return 'line';
+        }
+        
+        // For percentage data
+        if (this.isPercentageData(dataset.data)) {
+            return 'pie';
+        }
+        
+        // Default to bar
+        return 'bar';
+    }
+
+    isSequentialData(data) {
+        if (data.length < 3) return false;
+        
+        // Check if values are generally increasing/decreasing
+        let increasing = 0;
+        let decreasing = 0;
+        
+        for (let i = 1; i < data.length; i++) {
+            if (data[i] > data[i-1]) increasing++;
+            if (data[i] < data[i-1]) decreasing++;
+        }
+        
+        const total = data.length - 1;
+        return increasing / total > 0.7 || decreasing / total > 0.7;
+    }
+
+    isPercentageData(data) {
+        const sum = data.reduce((a, b) => a + b, 0);
+        return Math.abs(sum - 100) < 5; // Close to 100%
+    }
+
+    prepareChartData(data, chartType) {
+        const preparedData = {
+            labels: data.labels || [],
+            datasets: data.datasets.map((dataset, index) => {
+                const baseConfig = {
+                    label: dataset.label || `Dataset ${index + 1}`,
+                    data: dataset.data || [],
+                    borderWidth: 2,
+                    tension: 0.1
+                };
+
+                switch (chartType) {
+                    case 'line':
+                        return {
+                            ...baseConfig,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        };
+                    case 'bar':
+                        return {
+                            ...baseConfig,
+                            borderRadius: 4,
+                            borderSkipped: false
+                        };
+                    case 'pie':
+                    case 'doughnut':
+                        return {
+                            ...baseConfig,
+                            borderWidth: 1,
+                            hoverOffset: 15
+                        };
+                    default:
+                        return baseConfig;
+                }
+            })
+        };
+
+        // For pie/doughnut, only show first dataset
+        if (chartType === 'pie' || chartType === 'doughnut') {
+            if (preparedData.datasets.length > 1) {
+                preparedData.datasets = [preparedData.datasets[0]];
+            }
+        }
+
+        return preparedData;
+    }
+
+    getOptions(chartType) {
+        const options = JSON.parse(JSON.stringify(this.defaultOptions));
+        
+        switch (chartType) {
+            case 'line':
+                options.scales = {
+                    ...options.scales,
+                    x: {
+                        ...options.scales.x,
+                        type: this.isDateData(this.chartData?.labels) ? 'time' : 'category',
+                        time: this.isDateData(this.chartData?.labels) ? {
+                            unit: 'day',
+                            tooltipFormat: 'MMM d, yyyy'
+                        } : undefined
+                    }
+                };
+                break;
+                
+            case 'bar':
+                options.indexAxis = 'x';
+                options.scales.x.stacked = this.chartData?.datasets?.length > 1;
+                options.scales.y.stacked = this.chartData?.datasets?.length > 1;
+                break;
+                
+            case 'pie':
+            case 'doughnut':
+                options.plugins.legend.position = 'right';
+                options.cutout = chartType === 'doughnut' ? '50%' : 0;
+                options.plugins.tooltip.callbacks = {
+                    ...options.plugins.tooltip.callbacks,
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = Math.round((value / total) * 100);
+                        return `${label}: ${value.toLocaleString()} (${percentage}%)`;
+                    }
+                };
+                break;
+        }
+        
+        return options;
+    }
+
+    isDateData(labels) {
+        if (!labels || labels.length === 0) return false;
+        
+        const datePatterns = [
+            /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
+            /^\d{2}\/\d{2}\/\d{4}$/, // MM/DD/YYYY
+            /^\d{2}\/\d{2}\/\d{2}$/, // MM/DD/YY
+            /^[A-Za-z]{3} \d{1,2}$/ // Jan 1
+        ];
+        
+        return labels.some(label => 
+            datePatterns.some(pattern => pattern.test(label.toString()))
+        );
+    }
+
+    applyColors() {
+        if (!this.currentChart || !this.currentChart.data.datasets) return;
+        
+        this.currentChart.data.datasets.forEach((dataset, index) => {
+            const colorIndex = index % this.colorPalettes.primary.length;
+            
+            if (!dataset.backgroundColor) {
+                dataset.backgroundColor = this.colorPalettes.light[colorIndex];
+            }
+            
+            if (!dataset.borderColor) {
+                dataset.borderColor = this.colorPalettes.primary[colorIndex];
+            }
+            
+            if (!dataset.pointBackgroundColor) {
+                dataset.pointBackgroundColor = this.colorPalettes.primary[colorIndex];
+            }
+            
+            if (!dataset.pointBorderColor) {
+                dataset.pointBorderColor = '#ffffff';
+            }
+        });
+    }
+
+    showNoData() {
+        if (!this.currentChart) return;
+
+        this.currentChart.data = {
+            labels: ['No Data Available'],
+            datasets: [{
+                label: 'No Data',
+                data: [1],
+                backgroundColor: 'rgba(229, 229, 231, 0.5)',
+                borderColor: 'rgba(229, 229, 231, 1)',
+                borderWidth: 1
+            }]
+        };
+        
+        this.currentChart.options.plugins.tooltip.enabled = false;
+        this.currentChart.update();
+    }
+
+    exportChart(format = 'png', quality = 1.0) {
+        if (!this.currentChart) return null;
+        
+        const url = this.canvas.toDataURL(`image/${format}`, quality);
+        
+        // Create and trigger download
+        const link = document.createElement('a');
+        link.download = `data-chart-${Date.now()}.${format}`;
+        link.href = url;
+        link.click();
+        
+        return url;
+    }
+
+    getChartData() {
+        return this.chartData;
+    }
+
+    destroy() {
+        if (this.currentChart) {
+            this.currentChart.destroy();
+            this.currentChart = null;
+        }
+        this.chartData = null;
+    }
 }
 
-export default ChartManager;
+// Export for Node.js compatibility
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ChartManager;
+}

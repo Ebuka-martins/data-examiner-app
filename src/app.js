@@ -1,56 +1,87 @@
-import FileAnalyzer from './src/file-analyzer.js';
-import ChartManager from './src/chart.js';
-import API from './src/api.js';
-
-class ChatApplication {
+// Main Application Controller
+class DataExaminerApp {
     constructor() {
+        this.currentFile = null;
+        this.currentChart = null;
+        this.analysisHistory = [];
+        this.isDarkMode = false;
+        this.deferredPrompt = null;
+        
         this.initializeElements();
         this.initializeEventListeners();
-        this.setupServiceWorker();
-        this.loadHistory();
-        this.chart = null;
-        this.currentFile = null;
-        this.currentDataType = null;
-        
-        // Initialize modules
-        this.fileAnalyzer = new FileAnalyzer();
-        this.api = new API();
-        
-        // Initialize chart
-        this.chartManager = new ChartManager(this.elements.chartCanvas);
-        this.chartManager.initialize();
+        this.initializeServiceWorker();
+        this.loadFromLocalStorage();
+        this.setupTheme();
     }
 
     initializeElements() {
-        // DOM Elements
+        // Core elements
         this.elements = {
-            chatContainer: document.getElementById('chatContainer'),
-            messageInput: document.getElementById('messageInput'),
-            sendButton: document.getElementById('sendMessage'),
+            // Sidebar
+            sidebar: document.getElementById('sidebar'),
+            menuToggle: document.getElementById('menuToggle'),
+            newChat: document.getElementById('newChat'),
             fileInput: document.getElementById('fileInput'),
-            attachButton: document.getElementById('attachFile'),
-            filePreview: document.getElementById('filePreview'),
+            uploadBtn: document.getElementById('uploadBtn'),
             dataInput: document.getElementById('dataInput'),
             analyzePaste: document.getElementById('analyzePaste'),
-            newChat: document.getElementById('newChat'),
-            installBtn: document.getElementById('installBtn'),
-            menuBtn: document.getElementById('menuBtn'),
-            sidebar: document.querySelector('.sidebar'),
-            loadingModal: document.getElementById('loadingModal'),
+            analysisHistory: document.getElementById('analysisHistory'),
+            statusIndicator: document.getElementById('statusIndicator'),
+            
+            // Main content
+            welcomeScreen: document.getElementById('welcomeScreen'),
+            messagesContainer: document.getElementById('messagesContainer'),
+            chatContainer: document.getElementById('chatContainer'),
+            chartSection: document.getElementById('chartSection'),
             chartCanvas: document.getElementById('dataChart'),
-            chartContainer: document.getElementById('chartContainer'),
-            analysisHistory: document.getElementById('analysisHistory')
+            chartType: document.getElementById('chartType'),
+            exportChart: document.getElementById('exportChart'),
+            
+            // Input
+            messageInput: document.getElementById('messageInput'),
+            attachBtn: document.getElementById('attachBtn'),
+            sendBtn: document.getElementById('sendBtn'),
+            fileIndicator: document.getElementById('fileIndicator'),
+            fileName: document.getElementById('fileName'),
+            clearFile: document.getElementById('clearFile'),
+            
+            // Quick actions
+            quickUpload: document.getElementById('quickUpload'),
+            quickPaste: document.getElementById('quickPaste'),
+            quickSample: document.getElementById('quickSample'),
+            
+            // UI
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            installBtn: document.getElementById('installBtn'),
+            themeToggle: document.getElementById('themeToggle'),
+            toastContainer: document.getElementById('toastContainer')
         };
 
-        // Install prompt
-        this.deferredPrompt = null;
+        // Initialize API and Chart
+        this.api = new DataExaminerAPI();
+        this.chartManager = new ChartManager(this.elements.chartCanvas);
     }
 
     initializeEventListeners() {
-        // Send message on button click
-        this.elements.sendButton.addEventListener('click', () => this.sendMessage());
+        // Sidebar
+        this.elements.menuToggle.addEventListener('click', () => this.toggleSidebar());
+        this.elements.newChat.addEventListener('click', () => this.resetAnalysis());
+        this.elements.uploadBtn.addEventListener('click', () => this.elements.fileInput.click());
+        this.elements.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        this.elements.analyzePaste.addEventListener('click', () => this.analyzePastedData());
+        this.elements.clearFile.addEventListener('click', () => this.clearCurrentFile());
 
-        // Send message on Enter (with Shift for new line)
+        // Quick actions
+        this.elements.quickUpload.addEventListener('click', () => this.elements.fileInput.click());
+        this.elements.quickPaste.addEventListener('click', () => {
+            this.elements.dataInput.focus();
+            this.showToast('info', 'Paste your data in the sidebar textarea');
+        });
+        this.elements.quickSample.addEventListener('click', () => this.loadSampleData());
+
+        // Input
+        this.elements.attachBtn.addEventListener('click', () => this.elements.fileInput.click());
+        this.elements.sendBtn.addEventListener('click', () => this.sendMessage());
         this.elements.messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -61,72 +92,198 @@ class ChatApplication {
         // Auto-resize textarea
         this.elements.messageInput.addEventListener('input', () => {
             this.elements.messageInput.style.height = 'auto';
-            this.elements.messageInput.style.height = Math.min(this.elements.messageInput.scrollHeight, 120) + 'px';
+            this.elements.messageInput.style.height = Math.min(
+                this.elements.messageInput.scrollHeight,
+                150
+            ) + 'px';
         });
 
-        // File attachment
-        this.elements.attachButton.addEventListener('click', () => this.elements.fileInput.click());
-        this.elements.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        // Chart controls
+        this.elements.chartType.addEventListener('change', () => this.updateChartType());
+        this.elements.exportChart.addEventListener('click', () => this.exportChart());
 
-        // Analyze pasted data
-        this.elements.analyzePaste.addEventListener('click', () => this.analyzePastedData());
-
-        // New chat
-        this.elements.newChat.addEventListener('click', () => this.clearChat());
-
-        // Install button
-        this.elements.installBtn.addEventListener('click', () => this.installPWA());
-
-        // Menu button (mobile)
-        this.elements.menuBtn.addEventListener('click', () => {
-            this.elements.sidebar.classList.toggle('active');
-        });
-
-        // Close sidebar when clicking outside (mobile)
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768 && 
-                !this.elements.sidebar.contains(e.target) && 
-                !this.elements.menuBtn.contains(e.target)) {
-                this.elements.sidebar.classList.remove('active');
-            }
-        });
-
-        // Before install prompt
+        // PWA installation
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this.deferredPrompt = e;
             this.elements.installBtn.style.display = 'flex';
         });
 
-        // App installed
+        this.elements.installBtn.addEventListener('click', () => this.installPWA());
         window.addEventListener('appinstalled', () => {
             this.deferredPrompt = null;
             this.elements.installBtn.style.display = 'none';
-            this.showMessage('success', 'App installed successfully!');
+            this.showToast('success', 'App installed successfully!');
         });
 
+        // Theme toggle
+        this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
+
         // Online/offline detection
-        window.addEventListener('online', () => this.handleOnlineStatus(true));
-        window.addEventListener('offline', () => this.handleOnlineStatus(false));
+        window.addEventListener('online', () => this.updateOnlineStatus(true));
+        window.addEventListener('offline', () => this.updateOnlineStatus(false));
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 1024 && 
+                !this.elements.sidebar.contains(e.target) && 
+                !this.elements.menuToggle.contains(e.target)) {
+                this.elements.sidebar.classList.remove('active');
+            }
+        });
     }
 
-    async setupServiceWorker() {
+    async initializeServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
                 const registration = await navigator.serviceWorker.register('/service-worker.js');
-                console.log('ServiceWorker registered:', registration);
+                console.log('Service Worker registered:', registration);
+                
+                // Check for updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            this.showToast('info', 'New version available. Refresh to update.');
+                        }
+                    });
+                });
             } catch (error) {
-                console.error('ServiceWorker registration failed:', error);
+                console.error('Service Worker registration failed:', error);
             }
         }
     }
 
+    loadFromLocalStorage() {
+        // Load theme
+        const savedTheme = localStorage.getItem('dataExaminerTheme');
+        if (savedTheme) {
+            this.isDarkMode = savedTheme === 'dark';
+            this.applyTheme();
+        }
+
+        // Load history
+        const savedHistory = localStorage.getItem('dataExaminerHistory');
+        if (savedHistory) {
+            try {
+                this.analysisHistory = JSON.parse(savedHistory);
+                this.renderHistory();
+            } catch (error) {
+                console.error('Failed to load history:', error);
+                this.analysisHistory = [];
+            }
+        }
+    }
+
+    saveToLocalStorage() {
+        localStorage.setItem('dataExaminerTheme', this.isDarkMode ? 'dark' : 'light');
+        localStorage.setItem('dataExaminerHistory', JSON.stringify(this.analysisHistory));
+    }
+
+    setupTheme() {
+        // Check system preference
+        if (!localStorage.getItem('dataExaminerTheme')) {
+            this.isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            this.applyTheme();
+        }
+    }
+
+    toggleTheme() {
+        this.isDarkMode = !this.isDarkMode;
+        this.applyTheme();
+        this.saveToLocalStorage();
+    }
+
+    applyTheme() {
+        document.documentElement.setAttribute('data-theme', this.isDarkMode ? 'dark' : 'light');
+        this.elements.themeToggle.innerHTML = this.isDarkMode ? 
+            '<i class="fas fa-sun"></i>' : 
+            '<i class="fas fa-moon"></i>';
+    }
+
+    toggleSidebar() {
+        this.elements.sidebar.classList.toggle('active');
+    }
+
+    async handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file size
+        if (file.size > 10 * 1024 * 1024) {
+            this.showToast('error', 'File size exceeds 10MB limit');
+            return;
+        }
+
+        // Validate file type
+        const allowedTypes = ['.csv', '.xlsx', '.xls', '.json', '.txt'];
+        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedTypes.includes(fileExt)) {
+            this.showToast('error', 'Invalid file type. Please upload CSV, Excel, JSON, or text files.');
+            return;
+        }
+
+        this.currentFile = file;
+        this.showFileIndicator(file);
+        this.showToast('success', `File "${file.name}" selected`);
+
+        // Auto-analyze if welcome screen is visible
+        if (this.elements.welcomeScreen.style.display !== 'none') {
+            this.sendMessage();
+        }
+
+        // Reset file input
+        event.target.value = '';
+    }
+
+    showFileIndicator(file) {
+        this.elements.fileName.textContent = file.name;
+        this.elements.fileIndicator.style.display = 'flex';
+    }
+
+    clearCurrentFile() {
+        this.currentFile = null;
+        this.elements.fileIndicator.style.display = 'none';
+        this.elements.fileName.textContent = 'No file selected';
+        this.showToast('info', 'File cleared');
+    }
+
+    async analyzePastedData() {
+        const text = this.elements.dataInput.value.trim();
+        if (!text) {
+            this.showToast('error', 'Please paste some data first');
+            return;
+        }
+
+        this.currentFile = null;
+        this.sendMessage();
+    }
+
+    loadSampleData() {
+        this.elements.dataInput.value = window.sampleData.csv;
+        this.showToast('info', 'Sample sales data loaded. Click "Analyze" in the sidebar.');
+        this.elements.dataInput.focus();
+    }
+
     async sendMessage() {
         const message = this.elements.messageInput.value.trim();
-        if (!message && !this.currentFile && !this.currentDataType) return;
+        
+        if (!message && !this.currentFile && !this.elements.dataInput.value.trim()) {
+            this.showToast('error', 'Please enter a message or upload data');
+            return;
+        }
+
+        // Hide welcome screen on first interaction
+        if (this.elements.welcomeScreen.style.display !== 'none') {
+            this.elements.welcomeScreen.style.display = 'none';
+            this.elements.messagesContainer.style.display = 'block';
+        }
 
         // Add user message
-        this.addMessage('user', message);
+        this.addMessage('user', message || (this.currentFile ? 
+            `Uploaded file: ${this.currentFile.name}` : 
+            'Analyzing pasted data'));
 
         // Clear input
         this.elements.messageInput.value = '';
@@ -139,15 +296,14 @@ class ChatApplication {
             let response;
             
             if (this.currentFile) {
-                // Analyze file with message
-                response = await this.analyzeFile(this.currentFile, message);
-            } else if (this.currentDataType === 'text') {
-                // Analyze pasted text
-                const text = this.elements.dataInput.value.trim();
-                response = await this.analyzeText(text, message);
+                response = await this.api.analyzeFile(this.currentFile, message || 'Analyze this data');
+            } else if (this.elements.dataInput.value.trim()) {
+                response = await this.api.analyzeText(
+                    this.elements.dataInput.value.trim(), 
+                    message || 'Analyze this data'
+                );
             } else {
-                // Just send message (for follow-up questions)
-                response = await this.analyzeText('', message);
+                response = await this.api.analyzeText('', message);
             }
 
             // Add bot response
@@ -159,208 +315,253 @@ class ChatApplication {
             }
 
             // Save to history
-            this.saveToHistory({
-                type: this.currentDataType || 'chat',
+            this.addToHistory({
+                type: this.currentFile ? 'file' : 'text',
                 question: message || 'Data analysis',
                 analysis: response.analysis,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                dataSummary: response.dataSummary
             });
 
         } catch (error) {
             console.error('Error:', error);
-            this.addMessage('bot', `Error: ${error.message}. Please try again.`);
+            this.addMessage('bot', `**Error:** ${error.message}\n\nPlease try again or check your connection.`);
+            this.showToast('error', 'Analysis failed: ' + error.message);
         } finally {
             this.showLoading(false);
         }
     }
 
-    async handleFileSelect(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    addMessage(role, content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}-message`;
+        
+        const timestamp = new Date().toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        const avatar = role === 'user' ? 'U' : 'AI';
+        const name = role === 'user' ? 'You' : 'Data Assistant';
+        
+        messageDiv.innerHTML = `
+            <div class="message-header">
+                <div class="message-avatar">${avatar}</div>
+                <h4>${name}</h4>
+                <span class="message-timestamp">${timestamp}</span>
+            </div>
+            <div class="message-content">${this.formatMessage(content)}</div>
+        `;
+        
+        this.elements.messagesContainer.appendChild(messageDiv);
+        messageDiv.scrollIntoView({ behavior: 'smooth' });
+    }
 
-        this.currentFile = file;
-        this.currentDataType = 'file';
-
-        // Show file preview
-        this.showFilePreview(file);
-
-        // Auto-analyze the file
-        this.addMessage('user', `Uploaded file: ${file.name}`);
-        this.showLoading(true);
-
-        try {
-            const response = await this.analyzeFile(file, "Analyze this file and provide insights");
-            this.addMessage('bot', response.analysis);
+    formatMessage(content) {
+        if (!content) return '';
+        
+        return content
+            // Headers
+            .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+            .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+            .replace(/^### (.*$)/gm, '<h3>$1</h3>')
             
-            if (response.chartData) {
-                this.updateChart(response.chartData);
-            }
-
-            this.saveToHistory({
-                type: 'file',
-                filename: file.name,
-                question: 'Analyze this file',
-                analysis: response.analysis,
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error('Error:', error);
-            this.addMessage('bot', `Error analyzing file: ${error.message}`);
-        } finally {
-            this.showLoading(false);
-            event.target.value = '';
-        }
+            // Bold and italic
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            
+            // Lists
+            .replace(/^\* (.*$)/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+            
+            // Code blocks
+            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            
+            // Line breaks
+            .replace(/\n/g, '<br>')
+            
+            // Links (basic)
+            .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
     }
 
-    async analyzePastedData() {
-        const text = this.elements.dataInput.value.trim();
-        if (!text) {
-            this.showMessage('error', 'Please paste some data first');
+    updateChart(chartData) {
+        if (!chartData || !chartData.labels || chartData.labels.length === 0) {
+            this.elements.chartSection.style.display = 'none';
             return;
         }
 
-        this.currentDataType = 'text';
+        const type = this.elements.chartType.value;
+        this.chartManager.updateChart(chartData, type);
+        this.elements.chartSection.style.display = 'block';
+    }
+
+    updateChartType() {
+        if (this.chartManager.currentChart) {
+            const type = this.elements.chartType.value;
+            this.chartManager.updateChartType(type);
+        }
+    }
+
+    exportChart() {
+        if (this.chartManager.currentChart) {
+            const link = document.createElement('a');
+            link.download = `data-analysis-${Date.now()}.png`;
+            link.href = this.chartManager.exportChart();
+            link.click();
+            this.showToast('success', 'Chart exported successfully');
+        }
+    }
+
+    addToHistory(analysis) {
+        analysis.id = Date.now();
+        this.analysisHistory.unshift(analysis);
         
-        this.addMessage('user', 'Analyzing pasted data...');
-        this.showLoading(true);
+        // Keep only last 20 items
+        if (this.analysisHistory.length > 20) {
+            this.analysisHistory = this.analysisHistory.slice(0, 20);
+        }
+        
+        this.renderHistory();
+        this.saveToLocalStorage();
+    }
 
-        try {
-            const response = await this.analyzeText(text, "Analyze this data and provide insights");
-            this.addMessage('bot', response.analysis);
-            
-            if (response.chartData) {
-                this.updateChart(response.chartData);
-            }
-
-            this.saveToHistory({
-                type: 'text',
-                question: 'Analyze pasted data',
-                analysis: response.analysis,
-                timestamp: new Date().toISOString()
+    renderHistory() {
+        const historyList = this.elements.analysisHistory;
+        
+        if (this.analysisHistory.length === 0) {
+            historyList.innerHTML = `
+                <div class="history-empty">
+                    <i class="fas fa-inbox"></i>
+                    <p>No analyses yet</p>
+                </div>
+            `;
+            return;
+        }
+        
+        historyList.innerHTML = this.analysisHistory.map(item => `
+            <div class="history-item" data-id="${item.id}">
+                <div class="history-title">${item.question.substring(0, 50)}${item.question.length > 50 ? '...' : ''}</div>
+                <div class="history-date">${new Date(item.timestamp).toLocaleDateString()}</div>
+            </div>
+        `).join('');
+        
+        // Add click handlers
+        historyList.querySelectorAll('.history-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = parseInt(item.dataset.id);
+                this.loadFromHistory(id);
             });
+        });
+    }
 
-        } catch (error) {
-            console.error('Error:', error);
-            this.addMessage('bot', `Error analyzing data: ${error.message}`);
-        } finally {
-            this.showLoading(false);
+    loadFromHistory(id) {
+        const analysis = this.analysisHistory.find(item => item.id === id);
+        if (!analysis) return;
+        
+        this.resetAnalysis();
+        this.addMessage('user', analysis.question);
+        this.addMessage('bot', analysis.analysis);
+        
+        if (analysis.dataSummary && analysis.dataSummary.chartData) {
+            this.updateChart(analysis.dataSummary.chartData);
+        }
+        
+        this.showToast('info', 'Analysis loaded from history');
+        this.toggleSidebar();
+    }
+
+    resetAnalysis() {
+        this.elements.welcomeScreen.style.display = 'block';
+        this.elements.messagesContainer.style.display = 'none';
+        this.elements.messagesContainer.innerHTML = '';
+        this.elements.chartSection.style.display = 'none';
+        this.elements.fileIndicator.style.display = 'none';
+        this.currentFile = null;
+        this.elements.dataInput.value = '';
+        this.elements.messageInput.value = '';
+        this.elements.messageInput.style.height = 'auto';
+        
+        if (this.chartManager.currentChart) {
+            this.chartManager.destroy();
+        }
+        
+        this.showToast('info', 'New analysis started');
+    }
+
+    updateOnlineStatus(isOnline) {
+        const statusDot = this.elements.statusIndicator.querySelector('.status-dot');
+        const statusText = this.elements.statusIndicator.querySelector('span:last-child');
+        
+        if (isOnline) {
+            statusDot.className = 'status-dot online';
+            statusText.textContent = 'Online';
+            this.showToast('success', 'You are back online');
+        } else {
+            statusDot.className = 'status-dot offline';
+            statusText.textContent = 'Offline';
+            this.showToast('error', 'You are offline. Some features may not work.');
         }
     }
 
-    async analyzeFile(file, question) {
-        try {
-            const response = await this.api.analyzeFile(file, question);
-            return response;
-        } catch (error) {
-            // Fallback to local analysis if API fails
-            console.warn('API call failed, using local analysis:', error);
-            return await this.analyzeFileLocally(file, question);
-        }
-    }
-
-    async analyzeFileLocally(file, question) {
-        try {
-            // Parse file locally
-            const parsedData = await this.fileAnalyzer.parseFile(file);
+    async installPWA() {
+        if (this.deferredPrompt) {
+            this.deferredPrompt.prompt();
+            const { outcome } = await this.deferredPrompt.userChoice;
             
-            // Analyze structure
-            const analysis = this.fileAnalyzer.analyzeDataStructure(parsedData.data);
-            
-            // Prepare chart data
-            const chartConfig = this.fileAnalyzer.prepareForChart(parsedData.data, analysis);
-            
-            // Generate analysis text
-            const analysisText = this.generateAnalysisText(parsedData, analysis, question);
-            
-            return {
-                analysis: analysisText,
-                chartData: chartConfig ? chartConfig.data : null,
-                rawData: parsedData.data.slice(0, 10)
-            };
-        } catch (error) {
-            throw new Error(`Local analysis failed: ${error.message}`);
-        }
-    }
-
-    async analyzeText(text, question) {
-        try {
-            const response = await this.api.analyzeText(text, question);
-            return response;
-        } catch (error) {
-            // Fallback to local analysis
-            console.warn('API call failed, using local analysis:', error);
-            return await this.analyzeTextLocally(text, question);
-        }
-    }
-
-    async analyzeTextLocally(text, question) {
-        try {
-            // Try to parse as structured data
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch {
-                // Parse as CSV-like text
-                const lines = text.trim().split('\n');
-                if (lines.length > 1) {
-                    const headers = lines[0].split(',').map(h => h.trim());
-                    data = lines.slice(1).map(line => {
-                        const values = line.split(',').map(v => v.trim());
-                        const obj = {};
-                        headers.forEach((header, index) => {
-                            obj[header] = values[index] || '';
-                        });
-                        return obj;
-                    });
-                } else {
-                    data = [{ content: text }];
-                }
+            if (outcome === 'accepted') {
+                this.showToast('success', 'App installed successfully!');
+                this.elements.installBtn.style.display = 'none';
             }
-
-            const dataArray = Array.isArray(data) ? data : [data];
-            const analysis = this.fileAnalyzer.analyzeDataStructure(dataArray);
-            const chartConfig = this.fileAnalyzer.prepareForChart(dataArray, analysis);
             
-            const analysisText = this.generateAnalysisText(
-                { data: dataArray, summary: analysis }, 
-                analysis, 
-                question
-            );
-            
-            return {
-                analysis: analysisText,
-                chartData: chartConfig ? chartConfig.data : null,
-                rawData: dataArray.slice(0, 10)
-            };
-        } catch (error) {
-            throw new Error(`Local text analysis failed: ${error.message}`);
+            this.deferredPrompt = null;
         }
     }
 
-    generateAnalysisText(parsedData, analysis, question) {
-        const summary = parsedData.summary || analysis;
+    showLoading(show) {
+        this.elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+    }
+
+    showToast(type, message, title = '') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
         
-        let text = `## 📊 Data Analysis Report\n\n`;
+        const icons = {
+            success: 'fas fa-check-circle',
+            error: 'fas fa-exclamation-circle',
+            info: 'fas fa-info-circle',
+            warning: 'fas fa-exclamation-triangle'
+        };
         
-        if (question && question !== "Analyze this data and provide insights") {
-            text += `**Question:** ${question}\n\n`;
-        }
+        toast.innerHTML = `
+            <i class="toast-icon ${icons[type]}"></i>
+            <div class="toast-content">
+                ${title ? `<div class="toast-title">${title}</div>` : ''}
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
         
-        text += `### Data Overview\n`;
-        text += `- **Total Rows:** ${summary.totalRows || parsedData.data.length}\n`;
-        text += `- **Columns:** ${summary.columns ? summary.columns.join(', ') : 'N/A'}\n\n`;
+        this.elements.toastContainer.appendChild(toast);
         
-        text += `### Key Insights\n`;
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            toast.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
         
-        if (summary.statisticalSummary) {
-            Object.entries(summary.statisticalSummary).forEach(([column, stats]) => {
-                if (stats.type === 'numeric') {
-                    text += `- **${column}:** Range: ${stats.min.toFixed(2)} - ${stats.max.toFixed(2)}, Average: ${stats.average.toFixed(2)}\n`;
-                } else if (stats.type === 'text') {
-                    text += `- **${column}:** ${stats.uniqueValues} unique values\n`;
-                }
-            });
-        }
-        
-        text += `\n### Recommendations
+        // Close button
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+            toast.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => toast.remove(), 300);
+        });
+    }
+}
+
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new DataExaminerApp();
+    console.log('Data Examiner App initialized');
+});

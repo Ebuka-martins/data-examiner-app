@@ -479,7 +479,7 @@ app.use((err, req, res, next) => {
 });
 
 // ✅ Start server with better logging
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0',() => {
   console.log(`
   ====================================================
   🚀  DATA EXAMINER APP v1.0.0
