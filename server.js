@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('assets')); // ✅ Changed from 'public' to 'assets'
+app.use(express.static(path.join(__dirname, 'assets'))); // ✅ Changed from 'public' to 'assets'
 
 // Create uploads directory if it doesn't exist
 const uploadDir = 'uploads';

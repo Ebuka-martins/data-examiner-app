@@ -2,6 +2,7 @@
 class DataExaminerAPI {
     constructor() {
         this.baseURL = window.location.origin;
+        console.log('API Base URL:', this.baseURL);
         this.cache = new Map();
         this.requestQueue = [];
         this.isProcessingQueue = false;
