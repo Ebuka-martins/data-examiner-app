@@ -10,3 +10,4 @@ dist/
 assets/icons/*.png    # Exclude icon files (you'll add your own)
 !assets/icons/placeholder.txt
 .env
+
