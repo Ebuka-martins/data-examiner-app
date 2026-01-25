@@ -6,37 +6,55 @@ const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
 const csv = require('csv-parser');
+const { v4: uuidv4 } = require('uuid');
+const helmet = require('helmet');
+const compression = require('compression');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", "data:", "https:"]
+    }
+  }
+}));
+app.use(compression());
 app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'assets'))); // ✅ Changed from 'public' to 'assets'
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.static(path.join(__dirname, 'assets')));
 
-// Create uploads directory if it doesn't exist
-const uploadDir = 'uploads';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// ✅ Updated Multer v2 configuration with proper error handling
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+// Create directories
+const directories = ['uploads', 'assets/icons', 'assets/favicon'];
+directories.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
 });
 
-// ✅ File filter for allowed types
+// Enhanced storage configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueId = uuidv4();
+    const extension = path.extname(file.originalname);
+    cb(null, `${uniqueId}${extension}`);
+  }
+});
+
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = [
+  const allowedMimeTypes = [
     'text/csv',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -44,26 +62,31 @@ const fileFilter = (req, file, cb) => {
     'text/plain'
   ];
   
-  const allowedExtensions = ['.csv', '.xlsx', '.xls', '.json', '.txt'];
-  const fileExt = path.extname(file.originalname).toLowerCase();
+  const allowedExtensions = ['.csv', '.xlsx', '.xls', '.json', '.txt', '.xlsm'];
   
-  if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
+  const extension = path.extname(file.originalname).toLowerCase();
+  
+  if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(extension)) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type. Allowed: CSV, Excel, JSON, Text. Got: ${file.mimetype}`), false);
+    cb(new Error(`Unsupported file type. Allowed types: ${allowedExtensions.join(', ')}`), false);
   }
 };
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
-  limits: { 
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB
+    files: 1
   },
   fileFilter: fileFilter
 });
 
-// Parse CSV file
-const parseCSV = (filePath) => {
+// Session storage for chat context (in production, use Redis or database)
+const sessionStore = new Map();
+
+// Parse CSV
+const parseCSV = async (filePath) => {
   return new Promise((resolve, reject) => {
     const results = [];
     fs.createReadStream(filePath)
@@ -72,30 +95,87 @@ const parseCSV = (filePath) => {
       .on('end', () => resolve(results))
       .on('error', (error) => {
         console.error('CSV parsing error:', error);
-        reject(new Error('Failed to parse CSV file. Please ensure it\'s properly formatted.'));
+        reject(new Error('Failed to parse CSV file. Please check the format.'));
       });
   });
 };
 
-// Parse Excel file
+// Parse Excel
 const parseExcel = (filePath) => {
   try {
     const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    return XLSX.utils.sheet_to_json(worksheet);
+    const sheets = {};
+    
+    workbook.SheetNames.forEach(sheetName => {
+      const worksheet = workbook.Sheets[sheetName];
+      sheets[sheetName] = XLSX.utils.sheet_to_json(worksheet);
+    });
+    
+    return sheets;
   } catch (error) {
     console.error('Excel parsing error:', error);
     throw new Error('Failed to parse Excel file. Please ensure it\'s a valid Excel file.');
   }
 };
 
-// ✅ Improved error handling for Groq API
-const analyzeData = async (data, question = "Analyze this data") => {
+// Enhanced AI analysis with conversation context
+const analyzeDataWithAI = async (data, question, sessionId = null, conversationHistory = []) => {
   try {
-    // Limit data size to avoid token limits
-    const dataSample = data.slice(0, 100); // First 100 rows only
-    
+    // Get session context if available
+    let context = '';
+    if (sessionId && sessionStore.has(sessionId)) {
+      const session = sessionStore.get(sessionId);
+      context = `Previous analysis context: ${session.context || 'No previous context'}`;
+    }
+
+    // Prepare data sample (limit size for token constraints)
+    let dataSample;
+    if (Array.isArray(data)) {
+      dataSample = data.slice(0, 50);
+    } else if (typeof data === 'object') {
+      // Handle multiple sheets
+      const firstSheet = Object.values(data)[0];
+      dataSample = Array.isArray(firstSheet) ? firstSheet.slice(0, 50) : [firstSheet];
+    } else {
+      dataSample = [{ data: 'Data sample not available' }];
+    }
+
+    const messages = [
+      {
+        role: 'system',
+        content: `You are Data Examiner, an expert AI data analyst. Your task is to analyze data and provide insights.
+        
+        GUIDELINES:
+        1. Provide clear, actionable insights in markdown format
+        2. Include specific statistics and patterns found
+        3. Suggest relevant visualizations
+        4. Offer business recommendations
+        5. Highlight data quality issues if any
+        6. Use bullet points for readability
+        7. Keep explanations simple but thorough
+        
+        Format your response with these sections:
+        ## 📊 Executive Summary
+        ## 🔍 Key Findings
+        ## 📈 Data Statistics
+        ## 🎯 Recommendations
+        ## 📊 Suggested Visualizations
+        ## ⚠️ Data Quality Notes
+        
+        ${context}`
+      },
+      ...conversationHistory.slice(-5), // Keep last 5 messages for context
+      {
+        role: 'user',
+        content: `Question: ${question}
+
+Data Sample (${Array.isArray(data) ? data.length : 'multiple sheets'} total rows):
+${JSON.stringify(dataSample, null, 2)}
+
+Please analyze this data and provide comprehensive insights.`
+      }
+    ];
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -104,181 +184,338 @@ const analyzeData = async (data, question = "Analyze this data") => {
       },
       body: JSON.stringify({
         model: 'llama3-70b-8192',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a data analysis expert. Analyze the provided data and give insights in simple terms that normal people can understand. 
-            Include:
-            1. Key trends and patterns
-            2. Important statistics
-            3. Business insights
-            4. Recommendations
-            5. Visualization suggestions
-            
-            Format with clear sections using markdown. Keep it concise but informative.`
-          },
-          {
-            role: 'user',
-            content: `Question: ${question}\n\nData (${data.length} rows, showing sample):\n${JSON.stringify(dataSample, null, 2)}`
-          }
-        ],
+        messages: messages,
         temperature: 0.7,
-        max_tokens: 2000
+        max_tokens: 4000,
+        top_p: 0.9,
+        frequency_penalty: 0.3,
+        presence_penalty: 0.3
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Groq API error (${response.status}): ${errorText}`);
+      throw new Error(`Groq API error: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    
-    if (!result.choices || !result.choices[0] || !result.choices[0].message) {
-      throw new Error('Invalid response from Groq API');
-    }
-    
-    return result.choices[0].message.content;
-  } catch (error) {
-    console.error('Error analyzing data:', error);
-    
-    // Provide a fallback analysis if API fails
-    return `## Analysis Results
+    const analysis = result.choices[0].message.content;
 
-**Data Overview:**
-- Total rows analyzed: ${data.length}
-- Columns: ${Object.keys(data[0] || {}).join(', ') || 'N/A'}
+    // Generate visualization suggestions
+    const chartData = prepareAdvancedChartData(data);
+    const visualizationSuggestions = generateVisualizationSuggestions(data);
 
-**Key Statistics:**
-The data has been processed successfully. Due to an API connection issue, detailed AI analysis is temporarily unavailable.
-
-**Suggested Visualizations:**
-1. Line chart for time-series data
-2. Bar chart for categorical comparisons
-3. Scatter plot for correlations
-
-*Please try again in a moment or check your API key configuration.*`;
-  }
-};
-
-// ✅ Updated routes with better error handling
-app.post('/api/analyze/file', upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'No file uploaded or invalid file type' 
+    // Store session context
+    if (sessionId) {
+      sessionStore.set(sessionId, {
+        context: analysis.substring(0, 500), // Store first 500 chars as context
+        lastUpdate: Date.now(),
+        dataSummary: {
+          rows: Array.isArray(data) ? data.length : 'multiple',
+          columns: Array.isArray(data) && data.length > 0 ? Object.keys(data[0]) : []
+        }
       });
     }
 
-    console.log(`Processing file: ${req.file.originalname}, Type: ${req.file.mimetype}`);
+    return {
+      analysis,
+      chartData,
+      visualizationSuggestions,
+      conversationId: sessionId || uuidv4()
+    };
+
+  } catch (error) {
+    console.error('AI Analysis Error:', error);
+    
+    // Fallback analysis
+    return {
+      analysis: `## ⚠️ AI Analysis Temporarily Unavailable
+      
+      **Data Overview:**
+      - Data processed successfully
+      - Detailed AI insights temporarily unavailable
+      
+      **Next Steps:**
+      1. Try re-uploading your file
+      2. Check your internet connection
+      3. Contact support if issue persists
+      
+      *Error Details: ${error.message}*`,
+      chartData: prepareAdvancedChartData(data),
+      visualizationSuggestions: [],
+      conversationId: sessionId || uuidv4()
+    };
+  }
+};
+
+// Enhanced chart data preparation
+function prepareAdvancedChartData(data) {
+  if (!data || (Array.isArray(data) && data.length === 0)) {
+    return null;
+  }
+
+  let dataset;
+  if (Array.isArray(data)) {
+    dataset = data;
+  } else if (typeof data === 'object') {
+    // Use first sheet for chart
+    const firstSheet = Object.values(data)[0];
+    dataset = Array.isArray(firstSheet) ? firstSheet : [firstSheet];
+  } else {
+    return null;
+  }
+
+  if (dataset.length === 0) return null;
+
+  const sample = dataset[0];
+  const columns = Object.keys(sample);
+  
+  // Find numeric and date columns
+  const numericColumns = columns.filter(col => {
+    const value = sample[col];
+    return !isNaN(parseFloat(value)) && value !== null && value !== '' && isFinite(value);
+  });
+
+  const dateColumns = columns.filter(col => {
+    const value = sample[col];
+    return !isNaN(Date.parse(value));
+  });
+
+  if (numericColumns.length === 0 && dateColumns.length === 0) {
+    return null;
+  }
+
+  // Prepare datasets for different chart types
+  const chartConfigs = [];
+
+  // Line/Bar chart for numeric data
+  if (numericColumns.length > 0) {
+    const primaryNumeric = numericColumns[0];
+    const values = dataset
+      .slice(0, 100)
+      .map(row => parseFloat(row[primaryNumeric]))
+      .filter(v => !isNaN(v));
+
+    if (values.length > 0) {
+      chartConfigs.push({
+        type: 'line',
+        title: `Trend of ${primaryNumeric}`,
+        data: {
+          labels: Array.from({ length: values.length }, (_, i) => `Point ${i + 1}`),
+          datasets: [{
+            label: primaryNumeric,
+            data: values,
+            backgroundColor: 'rgba(16, 163, 127, 0.1)',
+            borderColor: 'rgba(16, 163, 127, 1)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true
+          }]
+        }
+      });
+    }
+  }
+
+  // Pie chart for categorical data if we have limited unique values
+  const categoricalColumns = columns.filter(col => {
+    const uniqueValues = [...new Set(dataset.slice(0, 50).map(row => row[col]))];
+    return uniqueValues.length > 1 && uniqueValues.length <= 10;
+  });
+
+  if (categoricalColumns.length > 0) {
+    const catColumn = categoricalColumns[0];
+    const valueCounts = {};
+    dataset.slice(0, 50).forEach(row => {
+      const value = row[catColumn];
+      valueCounts[value] = (valueCounts[value] || 0) + 1;
+    });
+
+    chartConfigs.push({
+      type: 'pie',
+      title: `Distribution of ${catColumn}`,
+      data: {
+        labels: Object.keys(valueCounts),
+        datasets: [{
+          data: Object.values(valueCounts),
+          backgroundColor: [
+            'rgba(16, 163, 127, 0.8)',
+            'rgba(102, 126, 234, 0.8)',
+            'rgba(255, 107, 107, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)'
+          ]
+        }]
+      }
+    });
+  }
+
+  return chartConfigs.length > 0 ? chartConfigs : null;
+}
+
+function generateVisualizationSuggestions(data) {
+  const suggestions = [];
+  
+  if (!data || (Array.isArray(data) && data.length === 0)) {
+    return suggestions;
+  }
+
+  let dataset;
+  if (Array.isArray(data)) {
+    dataset = data;
+  } else {
+    const firstSheet = Object.values(data)[0];
+    dataset = Array.isArray(firstSheet) ? firstSheet : [firstSheet];
+  }
+
+  if (dataset.length === 0) return suggestions;
+
+  const sample = dataset[0];
+  const columns = Object.keys(sample);
+  
+  // Check for time series
+  const dateColumns = columns.filter(col => !isNaN(Date.parse(sample[col])));
+  const numericColumns = columns.filter(col => !isNaN(parseFloat(sample[col])));
+
+  if (dateColumns.length > 0 && numericColumns.length > 0) {
+    suggestions.push({
+      type: 'time-series',
+      description: `Line chart showing ${numericColumns[0]} over time`,
+      reason: 'Time series data detected'
+    });
+  }
+
+  // Check for categorical vs numeric
+  const categoricalColumns = columns.filter(col => {
+    const uniqueValues = [...new Set(dataset.slice(0, 20).map(row => row[col]))];
+    return uniqueValues.length <= 10;
+  });
+
+  if (categoricalColumns.length > 0 && numericColumns.length > 0) {
+    suggestions.push({
+      type: 'bar-chart',
+      description: `Bar chart comparing ${numericColumns[0]} across ${categoricalColumns[0]} categories`,
+      reason: 'Categorical and numeric data combination'
+    });
+  }
+
+  // Check for correlations
+  if (numericColumns.length >= 2) {
+    suggestions.push({
+      type: 'scatter-plot',
+      description: `Scatter plot showing relationship between ${numericColumns[0]} and ${numericColumns[1]}`,
+      reason: 'Multiple numeric variables for correlation analysis'
+    });
+  }
+
+  return suggestions;
+}
+
+// Routes
+app.post('/api/analyze/file', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file uploaded'
+      });
+    }
+
+    console.log(`Processing file: ${req.file.originalname}`);
 
     let data;
     const filePath = req.file.path;
     const fileType = req.file.mimetype;
 
-    // Parse file based on type
     try {
       if (fileType === 'text/csv' || req.file.originalname.toLowerCase().endsWith('.csv')) {
         data = await parseCSV(filePath);
       } else if (
         fileType.includes('spreadsheetml') ||
         fileType.includes('excel') ||
-        req.file.originalname.toLowerCase().match(/\.(xlsx|xls)$/)
+        req.file.originalname.toLowerCase().match(/\.(xlsx|xls|xlsm)$/)
       ) {
         data = parseExcel(filePath);
       } else if (fileType === 'application/json') {
         const content = fs.readFileSync(filePath, 'utf-8');
         data = JSON.parse(content);
-        if (!Array.isArray(data)) {
-          data = [data];
-        }
       } else {
-        // Try to read as text
+        // Text file
         const content = fs.readFileSync(filePath, 'utf-8');
         data = [{ content }];
       }
     } catch (parseError) {
-      // Clean up file
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      
+      fs.unlinkSync(filePath);
       return res.status(400).json({
         success: false,
         error: `Failed to parse file: ${parseError.message}`
       });
     }
 
-    // Clean up uploaded file
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    // Clean up file
+    fs.unlinkSync(filePath);
 
-    if (!data || data.length === 0) {
+    if (!data || (Array.isArray(data) && data.length === 0)) {
       return res.status(400).json({
         success: false,
         error: 'No valid data found in the file'
       });
     }
 
-    console.log(`Successfully parsed ${data.length} rows from file`);
-
-    const question = req.body.question || "Analyze this data and provide insights";
-    const analysis = await analyzeData(data, question);
-
-    const chartData = prepareChartData(data);
+    const question = req.body.question || "Provide comprehensive analysis of this data";
+    const sessionId = req.body.conversationId || uuidv4();
+    
+    const result = await analyzeDataWithAI(data, question, sessionId);
 
     res.json({
       success: true,
-      message: `Successfully analyzed ${data.length} rows`,
-      analysis,
-      chartData,
-      dataSummary: {
-        totalRows: data.length,
-        columns: data.length > 0 ? Object.keys(data[0]) : [],
-        sample: data.slice(0, 5)
+      message: `Successfully analyzed ${Array.isArray(data) ? data.length : 'multiple sheets'} data points`,
+      ...result,
+      metadata: {
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        fileType: req.file.mimetype,
+        uploadTime: new Date().toISOString()
       }
     });
 
   } catch (error) {
-    console.error('Error processing file:', error);
+    console.error('File analysis error:', error);
     
-    // Clean up file if it exists
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
     
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Error processing file',
-      details: error.message 
+      error: 'Failed to analyze file',
+      details: error.message
     });
   }
 });
 
 app.post('/api/analyze/text', async (req, res) => {
   try {
-    const { text, question } = req.body;
+    const { text, question, conversationId } = req.body;
     
     if (!text || text.trim() === '') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'No text provided' 
+      return res.status(400).json({
+        success: false,
+        error: 'No text provided'
       });
     }
 
     let parsedData;
     try {
-      // Try to parse as JSON first
       parsedData = JSON.parse(text);
-    } catch (e) {
-      // Try to parse as CSV-like text
+    } catch {
+      // Try CSV parsing
       const lines = text.trim().split('\n').filter(line => line.trim());
       if (lines.length > 1) {
-        const headers = lines[0].split(',').map(h => h.trim());
+        const delimiter = text.includes('\t') ? '\t' : (text.includes(';') ? ';' : ',');
+        const headers = lines[0].split(delimiter).map(h => h.trim());
         parsedData = lines.slice(1).map(line => {
-          const values = line.split(',').map(v => v.trim());
+          const values = line.split(delimiter).map(v => v.trim());
           const obj = {};
           headers.forEach((header, index) => {
             obj[header] = values[index] || '';
@@ -286,11 +523,10 @@ app.post('/api/analyze/text', async (req, res) => {
           return obj;
         });
       } else {
-        parsedData = [{ text: text }];
+        parsedData = [{ text }];
       }
     }
 
-    // Ensure we have an array
     if (!Array.isArray(parsedData)) {
       parsedData = [parsedData];
     }
@@ -298,231 +534,172 @@ app.post('/api/analyze/text', async (req, res) => {
     if (parsedData.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'No valid data found in the text'
+        error: 'No valid data found in text'
       });
     }
 
-    const analysis = await analyzeData(parsedData, question || "Analyze this data");
-    const chartData = prepareChartData(parsedData);
+    const sessionId = conversationId || uuidv4();
+    const result = await analyzeDataWithAI(parsedData, question || "Analyze this data", sessionId);
 
     res.json({
       success: true,
-      message: `Successfully analyzed ${parsedData.length} data points`,
-      analysis,
-      chartData,
-      dataSummary: {
-        totalRows: parsedData.length,
-        columns: parsedData.length > 0 ? Object.keys(parsedData[0]) : [],
-        sample: parsedData.slice(0, 5)
-      }
+      message: `Analyzed ${parsedData.length} data points`,
+      ...result
     });
 
   } catch (error) {
-    console.error('Error analyzing text:', error);
-    res.status(500).json({ 
+    console.error('Text analysis error:', error);
+    res.status(500).json({
       success: false,
-      error: 'Error analyzing text',
-      details: error.message 
+      error: 'Failed to analyze text',
+      details: error.message
     });
   }
 });
 
-// ✅ Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    success: true,
-    status: 'OK', 
-    app: 'Data Examiner',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      fileUpload: '/api/analyze/file',
-      textAnalysis: '/api/analyze/text',
-      health: '/api/health'
-    }
-  });
-});
-
-// ✅ Test endpoint for file upload
-app.post('/api/test/upload', upload.single('file'), (req, res) => {
+app.post('/api/chat/followup', async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+    const { question, conversationId, previousAnalysis } = req.body;
     
-    // Clean up test file
-    if (fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    if (!question || !conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing question or conversation ID'
+      });
     }
+
+    // Get session data (in production, this would be from a database)
+    const session = sessionStore.get(conversationId) || {};
     
+    const result = await analyzeDataWithAI(
+      session.dataSummary || {},
+      question,
+      conversationId,
+      previousAnalysis ? [previousAnalysis] : []
+    );
+
     res.json({
       success: true,
-      message: 'File upload test successful',
-      file: {
-        originalname: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype
-      }
+      ...result
     });
+
   } catch (error) {
-    res.status(500).json({ 
+    console.error('Chat follow-up error:', error);
+    res.status(500).json({
       success: false,
-      error: error.message 
+      error: 'Failed to process follow-up question',
+      details: error.message
     });
   }
 });
 
-// ✅ Helper function to prepare chart data
-function prepareChartData(data) {
-  if (!Array.isArray(data) || data.length === 0) {
-    return null;
-  }
-
-  const sample = data[0];
-  const numericFields = Object.keys(sample).filter(key => {
-    const value = sample[key];
-    return !isNaN(parseFloat(value)) && value !== null && value !== '' && isFinite(value);
-  });
-
-  if (numericFields.length === 0) {
-    return null;
-  }
-
-  // Use first numeric field for chart
-  const field = numericFields[0];
-  const values = data
-    .slice(0, 50)
-    .map(row => parseFloat(row[field]))
-    .filter(v => !isNaN(v));
-
-  if (values.length === 0) {
-    return null;
-  }
-
-  return {
-    labels: Array.from({ length: values.length }, (_, i) => `Item ${i + 1}`),
-    datasets: [{
-      label: field,
-      data: values,
-      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-      borderColor: 'rgba(54, 162, 235, 1)',
-      borderWidth: 1,
-      tension: 0.1
-    }]
+app.get('/api/health', (req, res) => {
+  const health = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    sessions: sessionStore.size,
+    version: '2.0.0'
   };
-}
-
-// ✅ Serve PWA manifest from assets folder
-app.get('/manifest.json', (req, res) => {
-  res.sendFile(path.join(__dirname, 'assets', 'manifest.json'));
+  
+  res.json(health);
 });
 
-// ✅ Serve service worker
-app.get('/service-worker.js', (req, res) => {
-  res.sendFile(path.join(__dirname, 'assets', 'service-worker.js'));
-});
-
-// ✅ Serve favicon files
-app.get('/favicon.ico', (req, res) => {
-  res.sendFile(path.join(__dirname, 'assets', 'favicon.ico'));
-});
-
-app.get('/favicon/:file', (req, res) => {
-  const filePath = path.join(__dirname, 'assets', 'favicon', req.params.file);
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).json({ error: 'Favicon not found' });
+app.get('/api/session/:id', (req, res) => {
+  const session = sessionStore.get(req.params.id);
+  
+  if (!session) {
+    return res.status(404).json({
+      success: false,
+      error: 'Session not found'
+    });
   }
+  
+  res.json({
+    success: true,
+    session
+  });
 });
 
-app.get('/icons/:file', (req, res) => {
-  const filePath = path.join(__dirname, 'assets', 'icons', req.params.file);
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).json({ error: 'Icon not found' });
-  }
+app.delete('/api/session/:id', (req, res) => {
+  sessionStore.delete(req.params.id);
+  
+  res.json({
+    success: true,
+    message: 'Session cleared'
+  });
 });
 
-// ✅ Serve index.html for all other routes (SPA)
+// Serve SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'assets', 'index.html'));
 });
 
-// ✅ Updated error handling middleware for multer v2
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server Error:', err.message);
   
-  // Multer v2 errors
   if (err instanceof multer.MulterError) {
-    let message = err.message;
+    let message = 'File upload error';
     
     if (err.code === 'LIMIT_FILE_SIZE') {
-      message = 'File size exceeds 10MB limit';
+      message = 'File size exceeds 50MB limit';
     } else if (err.code === 'LIMIT_FILE_COUNT') {
       message = 'Too many files uploaded';
-    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      message = 'Unexpected file field';
     }
     
     return res.status(400).json({
       success: false,
-      error: `File upload error: ${message}`
+      error: message
     });
   }
   
   res.status(500).json({
     success: false,
-    error: err.message || 'Internal server error'
+    error: 'Internal server error',
+    details: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
-// ✅ Start server with better logging
-app.listen(PORT, '0.0.0.0',() => {
+// Start server
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`
-  ====================================================
-  🚀  DATA EXAMINER APP v1.0.0
-  ====================================================
+  🚀 DATA EXAMINER 2.0.0
+  ==========================================
   
-  📍  Server URL: http://localhost:${PORT}
-  🔧  Environment: ${process.env.NODE_ENV || 'development'}
-  📁  Static files: ./assets/
-  💾  Uploads directory: ./uploads/
+  📍 Server: http://localhost:${PORT}
+  🔧 Environment: ${process.env.NODE_ENV || 'development'}
+  💾 Uploads: ./uploads/
+  🎨 Assets: ./assets/
   
-  📡  API Endpoints:
-      POST   /api/analyze/file    - Upload and analyze files
-      POST   /api/analyze/text    - Analyze pasted text
-      GET    /api/health          - Health check
-      POST   /api/test/upload     - Test file upload
+  📡 API Endpoints:
+      POST   /api/analyze/file
+      POST   /api/analyze/text
+      POST   /api/chat/followup
+      GET    /api/health
+      GET    /api/session/:id
+      DELETE /api/session/:id
   
-  📱  PWA Features:
-      ✅  Manifest: /manifest.json
-      ✅  Service Worker: /service-worker.js
-      ✅  Favicons: /favicon.ico, /favicon/*
-      ✅  Icons: /icons/*
-  
-  ====================================================
-  ✅  Server is running! Press Ctrl+C to stop.
-  ====================================================
+  ==========================================
+  ✅ Server ready!
   `);
 });
 
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n🔴 Server shutting down...');
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
   
-  // Clean up uploads directory
+  // Clean up uploads
+  const uploadDir = 'uploads';
   if (fs.existsSync(uploadDir)) {
-    const files = fs.readdirSync(uploadDir);
-    files.forEach(file => {
-      const filePath = path.join(uploadDir, file);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+    fs.readdirSync(uploadDir).forEach(file => {
+      fs.unlinkSync(path.join(uploadDir, file));
     });
   }
   
-  console.log('✅ Cleanup complete. Goodbye!');
-  process.exit(0);
+  server.close(() => {
+    console.log('Server closed. Goodbye!');
+    process.exit(0);
+  });
 });

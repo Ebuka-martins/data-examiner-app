@@ -1,17 +1,17 @@
-// API Client for Data Examiner
 class DataExaminerAPI {
     constructor() {
         this.baseURL = window.location.origin;
-        console.log('API Base URL:', this.baseURL);
         this.cache = new Map();
         this.requestQueue = [];
         this.isProcessingQueue = false;
+        this.sessionId = null;
     }
 
-    async analyzeFile(file, question = 'Analyze this data') {
+    async analyzeFile(file, question = 'Analyze this data', conversationId = null) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('question', question);
+        if (conversationId) formData.append('conversationId', conversationId);
 
         try {
             const response = await fetch(`${this.baseURL}/api/analyze/file`, {
@@ -19,93 +19,112 @@ class DataExaminerAPI {
                 body: formData
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || `HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
+            const result = await this.handleResponse(response);
             
-            // Cache the result
-            this.cache.set(`file-${file.name}-${question}`, result);
+            // Store session ID for conversation continuity
+            if (result.conversationId) {
+                this.sessionId = result.conversationId;
+            }
             
             return result;
         } catch (error) {
-            console.error('Error analyzing file:', error);
-            
-            // Check if we have a cached result
-            const cacheKey = `file-${file.name}-${question}`;
-            const cachedResult = this.cache.get(cacheKey);
-            if (cachedResult) {
-                console.log('Using cached result for file analysis');
-                return cachedResult;
-            }
-            
-            throw new Error(`Failed to analyze file: ${error.message}`);
+            console.error('File analysis error:', error);
+            throw error;
         }
     }
 
-    async analyzeText(text, question = 'Analyze this data') {
+    async analyzeText(text, question = 'Analyze this data', conversationId = null) {
         try {
             const response = await fetch(`${this.baseURL}/api/analyze/text`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     text: text,
-                    question: question
+                    question: question,
+                    conversationId: conversationId
                 })
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || `HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
+            const result = await this.handleResponse(response);
             
-            // Cache the result
-            this.cache.set(`text-${hashString(text)}-${question}`, result);
+            if (result.conversationId) {
+                this.sessionId = result.conversationId;
+            }
             
             return result;
         } catch (error) {
-            console.error('Error analyzing text:', error);
-            
-            // Check if we have a cached result
-            const cacheKey = `text-${hashString(text)}-${question}`;
-            const cachedResult = this.cache.get(cacheKey);
-            if (cachedResult) {
-                console.log('Using cached result for text analysis');
-                return cachedResult;
-            }
-            
-            throw new Error(`Failed to analyze text: ${error.message}`);
+            console.error('Text analysis error:', error);
+            throw error;
         }
     }
 
-    async getHealth() {
+    async chatFollowup(data) {
         try {
-            const response = await fetch(`${this.baseURL}/api/health`);
+            const response = await fetch(`${this.baseURL}/api/chat/followup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await this.handleResponse(response);
             
-            if (!response.ok) {
-                throw new Error(`Health check failed: ${response.status}`);
+            if (result.conversationId) {
+                this.sessionId = result.conversationId;
             }
             
-            return await response.json();
+            return result;
         } catch (error) {
-            console.error('Health check error:', error);
-            return { 
-                success: false, 
-                status: 'ERROR', 
-                message: 'Server unreachable' 
-            };
+            console.error('Chat follow-up error:', error);
+            throw error;
         }
+    }
+
+    async getSession(sessionId) {
+        try {
+            const response = await fetch(`${this.baseURL}/api/session/${sessionId}`);
+            return await this.handleResponse(response);
+        } catch (error) {
+            console.error('Get session error:', error);
+            throw error;
+        }
+    }
+
+    async clearSession(sessionId) {
+        try {
+            const response = await fetch(`${this.baseURL}/api/session/${sessionId}`, {
+                method: 'DELETE'
+            });
+            return await this.handleResponse(response);
+        } catch (error) {
+            console.error('Clear session error:', error);
+            throw error;
+        }
+    }
+
+    async handleResponse(response) {
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({
+                error: `HTTP error! status: ${response.status}`
+            }));
+            throw new Error(error.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Request failed');
+        }
+        
+        return result;
     }
 
     // Queue system for offline support
     queueRequest(request) {
-        this.requestQueue.push(request);
+        this.requestQueue.push({
+            ...request,
+            timestamp: Date.now(),
+            id: Math.random().toString(36).substr(2, 9)
+        });
         
         if (!this.isProcessingQueue) {
             this.processQueue();
@@ -125,39 +144,21 @@ class DataExaminerAPI {
             
             try {
                 await request.fn();
-                this.requestQueue.shift(); // Remove successful request
+                this.requestQueue.shift();
             } catch (error) {
                 console.error('Failed to process queued request:', error);
-                break; // Stop processing if one fails
+                break;
             }
         }
         
         this.isProcessingQueue = false;
     }
 
-    // Clear cache
     clearCache() {
         this.cache.clear();
     }
 
-    // Get cache size
     getCacheSize() {
         return this.cache.size;
     }
-}
-
-// Helper function to create a simple hash of a string
-function hashString(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash.toString();
-}
-
-// Export for Node.js compatibility
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = DataExaminerAPI;
 }
