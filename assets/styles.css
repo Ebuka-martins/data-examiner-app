@@ -1144,3 +1144,55 @@ body {
     padding: var(--spacing-lg);
   }
 }
+
+/* ==========================================
+   ULTRA RESPONSIVE & BEAUTIFUL BUTTONS
+   ========================================== */
+
+button, .btn, .send-btn, .analyze-btn, .upload-btn, .new-analysis-btn, 
+.action-btn, .chart-btn, .quick-action, .theme-toggle, .menu-toggle, 
+.install-btn, .clear-file, .toast-close {
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+}
+
+button:hover, .btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(16, 163, 127, 0.25);
+}
+
+button:active, .btn:active {
+  transform: translateY(0) scale(0.96);
+  filter: brightness(0.92);
+}
+
+/* Mobile touch targets */
+@media (max-width: 768px) {
+  button, .btn, .send-btn, .analyze-btn {
+    min-height: 52px;
+    padding: 14px 24px;
+    font-size: 1.05rem;
+  }
+  
+  .quick-actions {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* Glass effect for cards/bubbles */
+.glass {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, button, .btn { transition: none !important; animation: none !important; }
+}
