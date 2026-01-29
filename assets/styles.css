@@ -276,6 +276,7 @@ body {
   cursor: pointer;
   transition: all var(--transition-fast);
   border: 1px solid transparent;
+  position: relative;
 }
 
 .history-item:hover {
@@ -296,6 +297,14 @@ body {
 .history-date {
   font-size: 0.8rem;
   color: var(--text-light);
+}
+
+.history-has-chart {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  color: var(--primary-color);
+  font-size: 0.8rem;
 }
 
 .sidebar-footer {
@@ -699,26 +708,52 @@ body {
   40% { transform: scale(1); }
 }
 
+/* FIX: Make sure all text in message content is visible */
+.message-content * {
+  color: var(--text-primary) !important;
+}
+
 .message-content h1,
 .message-content h2,
 .message-content h3,
 .message-content h4 {
   margin: var(--spacing-md) 0 var(--spacing-sm);
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+.message-content h1 {
+  font-size: 1.75rem;
+}
+
+.message-content h2 {
+  font-size: 1.5rem;
+}
+
+.message-content h3 {
+  font-size: 1.25rem;
+}
+
+.message-content h4 {
+  font-size: 1.1rem;
 }
 
 .message-content p {
   margin-bottom: var(--spacing-md);
+  color: var(--text-primary) !important;
+  line-height: 1.7;
 }
 
 .message-content ul,
 .message-content ol {
   margin-left: var(--spacing-lg);
   margin-bottom: var(--spacing-md);
+  color: var(--text-primary) !important;
 }
 
 .message-content li {
   margin-bottom: var(--spacing-xs);
+  color: var(--text-primary) !important;
 }
 
 .message-content code {
@@ -727,6 +762,7 @@ body {
   border-radius: 4px;
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 0.9rem;
+  color: var(--text-primary) !important;
 }
 
 .message-content pre {
@@ -741,9 +777,10 @@ body {
 .message-content pre code {
   background: none;
   padding: 0;
+  color: var(--text-primary) !important;
 }
 
-/* ===== BEAUTIFUL AI ANALYSIS STYLES ===== */
+/* ===== BEAUTIFUL AI ANALYSIS STYLES - FIXED VERSION ===== */
 .ai-summary {
   position: relative;
   padding: var(--spacing-xl);
@@ -753,6 +790,7 @@ body {
   border: 1px solid rgba(16, 163, 127, 0.15);
   backdrop-filter: blur(10px);
   animation: fadeIn 0.5s ease-out;
+  color: var(--text-primary) !important;
 }
 
 @keyframes fadeIn {
@@ -802,9 +840,10 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin: 0;
+  color: transparent !important;
 }
 
-/* Summary Sections */
+/* Summary Sections - FIXED VISIBILITY */
 .summary-section {
   margin-bottom: var(--spacing-xl);
   padding: var(--spacing-lg);
@@ -812,6 +851,7 @@ body {
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--border-color);
   transition: all var(--transition-normal);
+  color: var(--text-primary) !important;
 }
 
 .summary-section:hover {
@@ -846,6 +886,24 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
+}
+
+/* Fix for section content visibility */
+.section-content {
+  color: var(--text-primary) !important;
+  line-height: 1.7;
+  font-size: 1rem;
+}
+
+/* Overview specific styling */
+.summary-section:nth-child(2) .section-content {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--text-primary) !important;
+  background: rgba(16, 163, 127, 0.05);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-sm);
+  border-left: 4px solid var(--primary-color);
 }
 
 /* Beautiful Lists */
@@ -893,7 +951,7 @@ body {
 
 .item-text {
   flex: 1;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   line-height: 1.6;
 }
 
@@ -941,6 +999,7 @@ body {
   background-clip: text;
   margin-bottom: var(--spacing-xs);
   line-height: 1;
+  color: transparent !important;
 }
 
 .metric-label {
@@ -1032,7 +1091,7 @@ body {
 }
 
 .insight-content {
-  color: var(--text-secondary);
+  color: var(--text-primary) !important;
   line-height: 1.7;
   font-size: 0.95rem;
 }
@@ -1114,8 +1173,9 @@ body {
 }
 
 .highlight-content {
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   line-height: 1.7;
+  font-size: 1rem;
 }
 
 /* Recommendation Cards */
@@ -1153,7 +1213,7 @@ body {
 }
 
 .recommendation-content {
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   line-height: 1.7;
 }
 
@@ -1716,4 +1776,219 @@ button:active, .btn:active {
 /* Reduce motion preference */
 @media (prefers-reduced-motion: reduce) {
   *, button, .btn { transition: none !important; animation: none !important; }
+}
+
+/* ===== FALLBACK STYLES FOR RAW TEXT ===== */
+/* This ensures that even if the AI returns raw text (not structured), it's still visible */
+/* ===== FIX FOR TYPOING TEXT VISIBILITY ===== */
+.message-content.typing {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 24px;
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* FIX: Make sure all text in message content is visible */
+.message-content {
+  color: var(--text-primary) !important;
+}
+
+.message-content * {
+  color: inherit !important;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+  margin: var(--spacing-md) 0 var(--spacing-sm);
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+.message-content h1 {
+  font-size: 1.75rem;
+  margin-top: 0;
+}
+
+.message-content h2 {
+  font-size: 1.5rem;
+  margin-top: 0;
+}
+
+.message-content h3 {
+  font-size: 1.25rem;
+  margin-top: 0;
+}
+
+.message-content h4 {
+  font-size: 1.1rem;
+  margin-top: 0;
+}
+
+.message-content p {
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary) !important;
+  line-height: 1.6;
+}
+
+.message-content ul,
+.message-content ol {
+  margin-left: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary) !important;
+}
+
+.message-content li {
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-primary) !important;
+}
+
+.message-content code {
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: var(--text-primary) !important;
+}
+
+.message-content pre {
+  background: var(--bg-secondary);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-sm);
+  overflow-x: auto;
+  margin: var(--spacing-sm) 0;
+  border: 1px solid var(--border-color);
+}
+
+.message-content pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary) !important;
+}
+
+/* Fix for invisible text in any context */
+*[style*="color: transparent"],
+*[style*="color:transparent"],
+*[style*="color: white"],
+*[style*="color:white"],
+*[style*="color: #fff"],
+*[style*="color:#fff"],
+*[style*="color: #ffffff"],
+*[style*="color:#ffffff"] {
+  color: var(--text-primary) !important;
+}
+
+/* Fix for dark mode text contrast */
+[data-theme="dark"] .message-content * {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .ai-summary * {
+  color: var(--text-primary) !important;
+}
+/* ===== FALLBACK STYLES FOR PLAIN TEXT MESSAGES ===== */
+.message-content-plain {
+  color: var(--text-primary) !important;
+  line-height: 1.7;
+}
+
+.message-content-plain p {
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary) !important;
+}
+
+.message-content-plain strong,
+.message-content-plain b {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+.message-content-plain em,
+.message-content-plain i {
+  color: var(--text-primary) !important;
+  font-style: italic;
+}
+
+.message-content-plain h1,
+.message-content-plain h2,
+.message-content-plain h3,
+.message-content-plain h4 {
+  margin: var(--spacing-md) 0 var(--spacing-sm);
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+.message-content-plain h1 {
+  font-size: 1.75rem;
+}
+
+.message-content-plain h2 {
+  font-size: 1.5rem;
+}
+
+.message-content-plain h3 {
+  font-size: 1.25rem;
+}
+
+.message-content-plain h4 {
+  font-size: 1.1rem;
+}
+
+.message-content-plain ul,
+.message-content-plain ol {
+  margin-left: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary) !important;
+}
+
+.message-content-plain li {
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-primary) !important;
+}
+
+.message-content-plain code {
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: var(--text-primary) !important;
+}
+
+.message-content-plain pre {
+  background: var(--bg-secondary);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-sm);
+  overflow-x: auto;
+  margin: var(--spacing-md) 0;
+  border: 1px solid var(--border-color);
+}
+
+.message-content-plain pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary) !important;
 }
