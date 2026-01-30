@@ -40,10 +40,15 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ==========================
-// Static files
+// Static files - FIXED PATH
 // ==========================
+// Serve static files from the 'assets' directory
 app.use(express.static(path.join(__dirname, 'assets')));
-app.use('/src', express.static(path.join(__dirname, 'src')));
+
+// Serve JavaScript files from src directory
+app.use('/src', express.static(path.join(__dirname, 'assets/src')));
+
+// Serve icon files
 app.use('/icons', express.static(path.join(__dirname, 'assets/icons')));
 app.use('/favicon', express.static(path.join(__dirname, 'assets/favicon')));
 
@@ -51,7 +56,14 @@ app.use('/favicon', express.static(path.join(__dirname, 'assets/favicon')));
 // Multer setup
 // ==========================
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => {
+    // Create uploads directory if it doesn't exist
+    const uploadDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
   filename: (req, file, cb) => {
     const uniqueId = uuidv4();
     const ext = path.extname(file.originalname);
@@ -184,7 +196,7 @@ The JSON should be wrapped in \`\`\`json \`\`\` code blocks:
 }
 \`\`\`
 
-Use markdown for formatting.`,
+Use markdown for formatting. DO NOT use color:transparent or invisible text.`,
       },
     ];
 
@@ -231,13 +243,20 @@ ${JSON.stringify(sample, null, 2)}`,
 
     console.log('Raw AI response received');
     
-    let analysis = rawContent;
+    // Clean the response to remove invisible characters
+    let cleanedContent = rawContent
+      .replace(/\u0000/g, '') // Remove null characters
+      .replace(/[^\S\r\n]+/g, ' ') // Normalize spaces
+      .replace(/\u200B/g, '') // Remove zero-width spaces
+      .trim();
+    
+    let analysis = cleanedContent;
     let chartData = null;
     let chartTitle = 'Data Visualization';
     let chartType = 'auto';
 
     // Extract JSON chart block if present
-    const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/);
+    const jsonMatch = cleanedContent.match(/```json\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       try {
         console.log('Found JSON in response, parsing...');
@@ -265,7 +284,7 @@ ${JSON.stringify(sample, null, 2)}`,
         }
         
         // Remove the JSON block from analysis text
-        analysis = rawContent.replace(jsonMatch[0], '').trim();
+        analysis = cleanedContent.replace(jsonMatch[0], '').trim();
         console.log('Chart data extracted successfully:', {
           hasChartData: !!chartData,
           chartType,
@@ -282,7 +301,7 @@ ${JSON.stringify(sample, null, 2)}`,
 
     // Store in conversation history
     addToConversation(sessionIdToUse, 'user', question);
-    addToConversation(sessionIdToUse, 'assistant', rawContent);
+    addToConversation(sessionIdToUse, 'assistant', cleanedContent);
 
     return {
       success: true,
@@ -520,7 +539,7 @@ app.get('/api/test/chart', (req, res) => {
 });
 
 // ==========================
-// Health & SPA fallback
+// Health & SPA fallback - FIXED
 // ==========================
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -530,15 +549,25 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// FIXED: Serve index.html for all non-API routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'assets', 'index.html'));
+  // Check if the request is for an API route
+  if (req.path.startsWith('/api/')) {
+    // If it's an API route that doesn't exist, return 404
+    return res.status(404).json({ success: false, error: 'API endpoint not found' });
+  }
+  
+  // For all other routes, serve the index.html
+  res.sendFile(path.join(__dirname, 'assets', 'index.html'), (err) => {
+    if (err) {
+      console.error('Error serving index.html:', err);
+      res.status(500).send('Error loading application');
+    }
+  });
 });
 
 // Clean up old conversations periodically
 setInterval(() => {
-  const now = Date.now();
-  const oneHourAgo = now - (60 * 60 * 1000);
-  
   // In a real app, you'd track timestamps. For demo, we'll just clear old entries
   // to prevent memory leaks
   if (conversationStore.size > 100) {
@@ -554,4 +583,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Data Examiner running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📈 Test chart: http://localhost:${PORT}/api/test/chart`);
+  console.log(`🌐 Frontend: http://localhost:${PORT}/`);
 });

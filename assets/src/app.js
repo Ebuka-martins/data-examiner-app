@@ -286,9 +286,11 @@ class DataExaminerApp {
     // Parse the AI response and create beautiful HTML
     const formattedResponse = this.createBeautifulResponseFromMarkdown(res.analysis);
     
-    // Start typewriter effect
-    this.currentTypingMessage = messageDiv;
-    await this.typewriterEffect(messageDiv.querySelector('.message-content'), formattedResponse);
+    // Display the response immediately (no typewriter for HTML content)
+    const contentElement = messageDiv.querySelector('.message-content');
+    contentElement.classList.remove('typing');
+    contentElement.innerHTML = formattedResponse;
+    this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
 
     // Store AI response in conversation context
     this.conversationContext.push({
@@ -360,56 +362,6 @@ class DataExaminerApp {
         this.showToast('info', 'Chart requested but not generated. Try asking specifically: "Create a bar chart of the data"');
       }, 2000);
     }
-  }
-
-  // Typewriter effect function
-  async typewriterEffect(element, content, speed = 20) {
-    element.classList.remove('typing');
-    element.innerHTML = '';
-    
-    let i = 0;
-    let inTag = false;
-    let tagContent = '';
-    
-    const typeChar = () => {
-      if (i < content.length) {
-        // Check if we're entering or exiting an HTML tag
-        if (content.charAt(i) === '<') {
-          inTag = true;
-          tagContent = '<';
-        } else if (content.charAt(i) === '>' && inTag) {
-          inTag = false;
-          tagContent += '>';
-          element.innerHTML += tagContent;
-          tagContent = '';
-        } else if (inTag) {
-          tagContent += content.charAt(i);
-        } else {
-          element.innerHTML += content.charAt(i);
-        }
-        
-        i++;
-        
-        // Scroll to bottom as content grows
-        this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
-        
-        // Adjust speed based on character type
-        const currentSpeed = content.charAt(i) === ' ' ? speed / 2 : speed;
-        setTimeout(typeChar, currentSpeed);
-      } else {
-        this.currentTypingMessage = null;
-      }
-    };
-    
-    await new Promise(resolve => {
-      const interval = setInterval(() => {
-        if (i >= content.length) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 100);
-      typeChar();
-    });
   }
 
   // Parse markdown to structured data
@@ -537,7 +489,7 @@ class DataExaminerApp {
     return sections;
   }
 
-  // Create beautiful HTML response from markdown - UPDATED VERSION
+  // Create beautiful HTML response from markdown
   createBeautifulResponseFromMarkdown(markdown) {
     // First, check if this is already formatted HTML
     if (markdown.includes('<div class="ai-summary">')) {
@@ -554,8 +506,25 @@ class DataExaminerApp {
       return this.createBeautifulHTML(structuredData);
     } else {
       // Fallback: format as plain text with basic styling
-      return `<div class="message-content-plain">${this.formatMarkdown(markdown)}</div>`;
+      return `<div class="message-content-plain">${this.simpleMarkdownToHTML(markdown)}</div>`;
     }
+  }
+
+  // Helper function for simple markdown to HTML conversion
+  simpleMarkdownToHTML(text) {
+    if (!text) return '';
+    
+    // Convert markdown to simple HTML
+    return text
+      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>')
+      .replace(/<\/p><p>/g, '</p><p>');
   }
 
   // Create beautiful HTML from structured data
@@ -574,7 +543,7 @@ class DataExaminerApp {
       </div>
     `;
     
-    // Overview - FIXED to always show even if empty
+    // Overview - Always show
     html += `
       <div class="summary-section">
         <div class="section-header">

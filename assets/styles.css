@@ -809,6 +809,29 @@ body {
   border-radius: var(--border-radius) 0 0 var(--border-radius);
 }
 
+/* FIX: CRITICAL - Make sure all text in AI summary is visible */
+.ai-summary * {
+  color: var(--text-primary) !important;
+}
+
+.ai-summary h1,
+.ai-summary h2,
+.ai-summary h3,
+.ai-summary h4,
+.ai-summary h5,
+.ai-summary h6,
+.ai-summary p,
+.ai-summary li,
+.ai-summary span,
+.ai-summary div {
+  color: var(--text-primary) !important;
+}
+
+/* Dark mode specific fix */
+[data-theme="dark"] .ai-summary * {
+  color: #f1f5f9 !important;
+}
+
 /* Summary Header */
 .summary-header {
   display: flex;
@@ -840,7 +863,6 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin: 0;
-  color: transparent !important;
 }
 
 /* Summary Sections - FIXED VISIBILITY */
@@ -851,7 +873,6 @@ body {
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--border-color);
   transition: all var(--transition-normal);
-  color: var(--text-primary) !important;
 }
 
 .summary-section:hover {
@@ -999,7 +1020,6 @@ body {
   background-clip: text;
   margin-bottom: var(--spacing-xs);
   line-height: 1;
-  color: transparent !important;
 }
 
 .metric-label {
@@ -1780,136 +1800,6 @@ button:active, .btn:active {
 
 /* ===== FALLBACK STYLES FOR RAW TEXT ===== */
 /* This ensures that even if the AI returns raw text (not structured), it's still visible */
-/* ===== FIX FOR TYPOING TEXT VISIBILITY ===== */
-.message-content.typing {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  min-height: 24px;
-}
-
-.typing-indicator {
-  display: flex;
-  gap: 4px;
-}
-
-.typing-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--primary-color);
-  border-radius: 50%;
-  animation: typingBounce 1.4s infinite ease-in-out both;
-}
-
-.typing-dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-dot:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes typingBounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
-}
-
-/* FIX: Make sure all text in message content is visible */
-.message-content {
-  color: var(--text-primary) !important;
-}
-
-.message-content * {
-  color: inherit !important;
-}
-
-.message-content h1,
-.message-content h2,
-.message-content h3,
-.message-content h4 {
-  margin: var(--spacing-md) 0 var(--spacing-sm);
-  color: var(--text-primary) !important;
-  font-weight: 600;
-}
-
-.message-content h1 {
-  font-size: 1.75rem;
-  margin-top: 0;
-}
-
-.message-content h2 {
-  font-size: 1.5rem;
-  margin-top: 0;
-}
-
-.message-content h3 {
-  font-size: 1.25rem;
-  margin-top: 0;
-}
-
-.message-content h4 {
-  font-size: 1.1rem;
-  margin-top: 0;
-}
-
-.message-content p {
-  margin-bottom: var(--spacing-sm);
-  color: var(--text-primary) !important;
-  line-height: 1.6;
-}
-
-.message-content ul,
-.message-content ol {
-  margin-left: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
-  color: var(--text-primary) !important;
-}
-
-.message-content li {
-  margin-bottom: var(--spacing-xs);
-  color: var(--text-primary) !important;
-}
-
-.message-content code {
-  background: var(--bg-secondary);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Courier New', monospace;
-  font-size: 0.9rem;
-  color: var(--text-primary) !important;
-}
-
-.message-content pre {
-  background: var(--bg-secondary);
-  padding: var(--spacing-md);
-  border-radius: var(--border-radius-sm);
-  overflow-x: auto;
-  margin: var(--spacing-sm) 0;
-  border: 1px solid var(--border-color);
-}
-
-.message-content pre code {
-  background: none;
-  padding: 0;
-  color: var(--text-primary) !important;
-}
-
-/* Fix for invisible text in any context */
-*[style*="color: transparent"],
-*[style*="color:transparent"],
-*[style*="color: white"],
-*[style*="color:white"],
-*[style*="color: #fff"],
-*[style*="color:#fff"],
-*[style*="color: #ffffff"],
-*[style*="color:#ffffff"] {
-  color: var(--text-primary) !important;
-}
-
-/* Fix for dark mode text contrast */
-[data-theme="dark"] .message-content * {
-  color: var(--text-primary) !important;
-}
-
-[data-theme="dark"] .ai-summary * {
-  color: var(--text-primary) !important;
-}
-/* ===== FALLBACK STYLES FOR PLAIN TEXT MESSAGES ===== */
 .message-content-plain {
   color: var(--text-primary) !important;
   line-height: 1.7;
@@ -1991,4 +1881,35 @@ button:active, .btn:active {
   background: none;
   padding: 0;
   color: var(--text-primary) !important;
+}
+
+/* FIX: Remove any transparent or white text from AI responses */
+*[style*="color: transparent"],
+*[style*="color:transparent"],
+*[style*="color: white"],
+*[style*="color:white"],
+*[style*="color: #fff"],
+*[style*="color:#fff"],
+*[style*="color: #ffffff"],
+*[style*="color:#ffffff"] {
+  color: var(--text-primary) !important;
+}
+
+/* FIX: Ensure code blocks have proper contrast */
+code, pre {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* FIX: Make sure all AI response text is visible in both themes */
+[data-theme="dark"] .message-content *,
+[data-theme="dark"] .ai-summary *,
+[data-theme="dark"] .message-content-plain * {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .message-content *,
+[data-theme="light"] .ai-summary *,
+[data-theme="light"] .message-content-plain * {
+  color: #1e293b !important;
 }
