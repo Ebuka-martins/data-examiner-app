@@ -54,9 +54,12 @@ class DataExaminerApp {
     this.elements.fileInput?.addEventListener('change', e =>
       this.handleFileSelect(e)
     );
+    
+    // FIX: Make analyzePaste button work properly
     this.elements.analyzePaste?.addEventListener('click', () =>
       this.analyzePastedData()
     );
+    
     this.elements.clearFile?.addEventListener('click', () =>
       this.clearCurrentFile()
     );
@@ -141,9 +144,19 @@ class DataExaminerApp {
     this.elements.fileInput.value = '';
   }
 
+  // FIX: Make analyzePastedData work exactly like sendMessage
   async analyzePastedData() {
     const text = this.elements.dataInput?.value.trim();
     if (!text) return this.showToast('warning', 'Please paste some data first');
+
+    // Hide welcome screen and show messages
+    if (this.elements.welcomeScreen.style.display !== 'none') {
+      this.elements.welcomeScreen.style.display = 'none';
+      this.elements.messagesContainer.style.display = 'block';
+    }
+
+    // Add user message
+    this.addMessage('user', 'Analyze this pasted data and create visualizations');
 
     this.showLoading(true);
     try {
@@ -152,8 +165,30 @@ class DataExaminerApp {
         'Analyze this pasted data and create visualizations',
         this.currentSessionId
       );
+      
+      console.log('Paste analysis response:', {
+        success: res.success,
+        hasChartData: !!res.chartData,
+        chartType: res.chartType,
+        conversationId: res.conversationId
+      });
+      
+      // Update session ID for conversation continuity
+      this.currentSessionId = res.conversationId;
+      
+      // Handle the response with full AI summary and charts
       this.handleAnalysisResponse(res);
+      
+      // Clear the paste area after successful analysis
+      this.elements.dataInput.value = '';
+      
     } catch (err) {
+      console.error('Paste analysis error:', err);
+      this.addMessage(
+        'bot',
+        `**Error**\n\n${err.message || 'Analysis failed. Please try again.'}`,
+        false
+      );
       this.showToast('error', 'Analysis failed: ' + err.message);
     } finally {
       this.showLoading(false);
