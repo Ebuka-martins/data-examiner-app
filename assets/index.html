@@ -6,29 +6,29 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Data Examiner - AI Data Analysis</title>
-    
+   
     <!-- Favicon References -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
     <link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png">
-    
+   
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
-    
+   
     <!-- Styles -->
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+   
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+   
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#10a37f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Data Examiner">
     <meta name="description" content="Upload CSV/Excel files or paste data for instant AI-powered analysis with visual charts">
-    
+   
     <!-- Responsive Meta Tags -->
     <meta name="format-detection" content="telephone=no">
     <meta name="msapplication-tap-highlight" content="no">
@@ -48,7 +48,7 @@
                     <i class="fas fa-plus" aria-hidden="true"></i> New Analysis
                 </button>
             </div>
-            
+           
             <!-- File Upload Section -->
             <section class="sidebar-section" aria-labelledby="upload-heading">
                 <h3 id="upload-heading"><i class="fas fa-file-upload" aria-hidden="true"></i> Upload Files</h3>
@@ -62,13 +62,12 @@
                     <p>Max size: 10MB</p>
                 </div>
             </section>
-
             <!-- Paste Data Section -->
             <section class="sidebar-section" aria-labelledby="paste-heading">
                 <h3 id="paste-heading"><i class="fas fa-paste" aria-hidden="true"></i> Paste Data</h3>
                 <div class="paste-container">
-                    <textarea id="dataInput" 
-                              placeholder="Paste CSV, JSON, or any data here..." 
+                    <textarea id="dataInput"
+                              placeholder="Paste CSV, JSON, or any data here..."
                               aria-label="Data input area"
                               rows="4"></textarea>
                     <button id="analyzePaste" class="analyze-btn" aria-label="Analyze pasted data">
@@ -76,7 +75,6 @@
                     </button>
                 </div>
             </section>
-
             <!-- Recent Analyses -->
             <section class="sidebar-section history-section" aria-labelledby="history-heading">
                 <h3 id="history-heading"><i class="fas fa-history" aria-hidden="true"></i> Recent Analyses</h3>
@@ -87,7 +85,6 @@
                     </div>
                 </div>
             </section>
-
             <!-- Status & Info -->
             <footer class="sidebar-footer">
                 <div class="status-indicator" id="statusIndicator">
@@ -97,7 +94,6 @@
                 <div class="app-version">v1.0.0</div>
             </footer>
         </aside>
-
         <!-- Main Content -->
         <main class="main-content">
             <!-- Header -->
@@ -106,6 +102,9 @@
                     <h2><i class="fas fa-robot" aria-hidden="true"></i> Data Analysis Assistant</h2>
                 </div>
                 <div class="header-right">
+                    <button class="test-chart-btn" id="testChartBtn" style="display: none; margin-left: 10px;">
+                        <i class="fas fa-vial"></i> Test Chart
+                    </button>
                     <button class="install-btn" id="installBtn" style="display: none;" aria-label="Install app">
                         <i class="fas fa-download" aria-hidden="true"></i> Install App
                     </button>
@@ -114,7 +113,6 @@
                     </button>
                 </div>
             </header>
-
             <!-- Chat Container -->
             <div class="chat-container" id="chatContainer">
                 <!-- Welcome Message -->
@@ -127,7 +125,7 @@
                             <h1>Welcome to Data Examiner</h1>
                             <p class="hero-subtitle">AI-powered data analysis made simple</p>
                         </div>
-                        
+                       
                         <div class="quick-start">
                             <h3>Get Started Quickly</h3>
                             <div class="quick-actions">
@@ -171,11 +169,9 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Messages Container -->
                 <div class="messages-container" id="messagesContainer"></div>
             </div>
-
             <!-- Chart Container -->
             <section class="chart-section" id="chartSection" aria-labelledby="chart-heading">
                 <div class="chart-header">
@@ -196,7 +192,6 @@
                     <canvas id="dataChart" role="img" aria-label="Data visualization chart"></canvas>
                 </div>
             </section>
-
             <!-- Input Area -->
             <footer class="input-section">
                 <div class="input-container">
@@ -207,10 +202,10 @@
                             <i class="fas fa-times" aria-hidden="true"></i>
                         </button>
                     </div>
-                    
+                   
                     <div class="input-group">
-                        <textarea 
-                            id="messageInput" 
+                        <textarea
+                            id="messageInput"
                             placeholder="Ask questions about your data or request specific analysis..."
                             rows="1"
                             aria-label="Message input"></textarea>
@@ -223,7 +218,7 @@
                             </button>
                         </div>
                     </div>
-                    
+                   
                     <div class="input-hints">
                         <span class="hint">Try: "Show trends", "Find correlations", "Summarize data", "Create visualization"</span>
                     </div>
@@ -231,7 +226,6 @@
             </footer>
         </main>
     </div>
-
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
         <div class="loading-content">
@@ -247,16 +241,14 @@
             </div>
         </div>
     </div>
-
     <!-- Message Toast -->
     <div class="toast-container" id="toastContainer" role="alert"></div>
-
     <!-- Import JavaScript files -->
     <script src="/src/app.js"></script>
     <script src="/src/api.js"></script>
     <script src="/src/chart.js"></script>
     <script src="/src/file-analyzer.js"></script>
-    
+   
     <!-- Sample Data -->
     <script>
         // Sample data for testing
@@ -269,7 +261,7 @@
 2024-01-05,25000,12000,13000,North
 2024-01-06,21000,10500,10500,South
 2024-01-07,23000,11500,11500,East`,
-            
+           
             json: JSON.stringify([
                 { product: "Laptop", sales: 45, revenue: 67500, category: "Electronics" },
                 { product: "Phone", sales: 120, revenue: 84000, category: "Electronics" },
@@ -279,7 +271,7 @@
                 { product: "Monitor", sales: 60, revenue: 30000, category: "Electronics" }
             ], null, 2)
         };
-        
+       
         // Make sampleData available globally
         window.sampleData = sampleData;
     </script>

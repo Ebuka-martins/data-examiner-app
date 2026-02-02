@@ -148,10 +148,10 @@ class ChartManager {
   updateChart(data, type = 'auto', title = 'Data Visualization') {
     if (!this.canvas) {
       console.error('Canvas element not found');
-      return;
+      return false;
     }
 
-    console.log('Updating chart:', { 
+    console.log('🔄 Updating chart:', { 
       dataType: typeof data, 
       chartType: type, 
       title 
@@ -168,7 +168,7 @@ class ChartManager {
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       } catch (error) {
         console.warn('Error destroying previous chart:', error);
-        // Force remove the canvas and recreate if needed
+        // If destruction fails, try to clear and recreate canvas
         const parent = this.canvas.parentNode;
         const newCanvas = this.canvas.cloneNode();
         parent.removeChild(this.canvas);
@@ -177,24 +177,10 @@ class ChartManager {
       }
     }
 
-    // Also check for any other chart instances using this canvas
-    if (Chart.instances) {
-      Chart.instances.forEach((chart, index) => {
-        if (chart.canvas === this.canvas) {
-          console.log('Found additional chart instance, destroying:', chart.id);
-          try {
-            chart.destroy();
-          } catch (error) {
-            console.warn('Error destroying additional chart instance:', error);
-          }
-        }
-      });
-    }
-
     if (!data || !data.datasets || data.datasets.length === 0) {
       console.warn('No valid chart data provided');
       this.showNoData();
-      return;
+      return false;
     }
 
     this.chartData = data;
@@ -224,10 +210,12 @@ class ChartManager {
       this.applyColors();
       this.currentChart.update();
       
-      console.log('Chart updated successfully with ID:', this.currentChart.id);
+      console.log('✅ Chart updated successfully with ID:', this.currentChart.id);
+      return true;
     } catch (error) {
-      console.error('Error creating chart:', error);
+      console.error('❌ Error creating chart:', error);
       this.showNoData();
+      return false;
     }
   }
 

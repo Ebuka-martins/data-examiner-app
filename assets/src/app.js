@@ -1,4 +1,4 @@
-// src/app.js — Data Examiner — main frontend logic with typewriter effects
+// src/app.js — Data Examiner — main frontend logic
 class DataExaminerApp {
   constructor() {
     this.api = new DataExaminerAPI();
@@ -235,10 +235,9 @@ class DataExaminerApp {
       this.addMessage(
         'bot',
         `**Error**\n\n${err.message || 'Something went wrong. Try again.'}`,
-        false // No typewriter for errors
+        false
       );
       
-      // Show specific error message
       let toastMessage = err.message || 'Analysis failed';
       if (toastMessage.includes('404')) {
         toastMessage = 'Server endpoint not found. Please restart the server.';
@@ -283,10 +282,10 @@ class DataExaminerApp {
     this.elements.messagesContainer.appendChild(messageDiv);
     this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
     
-    // Parse the AI response and create beautiful HTML
+    // Parse the AI response
     const formattedResponse = this.createBeautifulResponseFromMarkdown(res.analysis);
     
-    // Display the response immediately (no typewriter for HTML content)
+    // Display the response
     const contentElement = messageDiv.querySelector('.message-content');
     contentElement.classList.remove('typing');
     contentElement.innerHTML = formattedResponse;
@@ -301,35 +300,35 @@ class DataExaminerApp {
 
     // Show chart if AI provided data
     if (res.chartData && window.chartManager) {
-      console.log('Displaying chart with data:', res.chartData);
-      try {
-        // Use the safe chart update method
-        this.safelyUpdateChart(
-          res.chartData,
-          res.chartType || 'auto',
-          res.chartTitle || 'Data Visualization'
-        );
-        this.elements.chartSection.style.display = 'block';
-        this.elements.chartSection.style.opacity = '1';
-        
-        // Update chart type selector if needed
-        if (res.chartType && this.elements.chartType) {
-          this.elements.chartType.value = res.chartType;
-        }
-        
-        // Scroll to chart if it's significant
-        setTimeout(() => {
-          this.elements.chartSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 500);
-        
-      } catch (chartError) {
-        console.error('Chart rendering error:', chartError);
-        this.showToast('error', 'Could not display chart. ' + chartError.message);
+      console.log('🔄 Attempting to display chart with AI data');
+      
+      // Show the chart section first
+      this.elements.chartSection.style.display = 'block';
+      this.elements.chartSection.style.opacity = '1';
+      
+      // Try to display the chart
+      const success = this.displayChartWithData(
+        res.chartData,
+        res.chartType || 'auto',
+        res.chartTitle || 'Data Visualization'
+      );
+      
+      if (!success) {
+        console.log('Chart display failed, showing fallback');
+        window.chartManager.showNoData();
       }
+      
+      // Update chart type selector if needed
+      if (res.chartType && this.elements.chartType) {
+        this.elements.chartType.value = res.chartType;
+      }
+      
     } else if (window.chartManager) {
-      console.log('No chart data provided in response');
-      // You can optionally ask AI to generate a chart
-      this.askForChartIfNeeded(res);
+      console.log('📭 No chart data provided in AI response');
+      // Show "no data" state
+      window.chartManager.showNoData();
+      this.elements.chartSection.style.display = 'block';
+      this.elements.chartSection.style.opacity = '1';
     }
 
     this.saveToHistory(res);
@@ -345,27 +344,50 @@ class DataExaminerApp {
       chartType: data.chartType,
       conversationId: data.conversationId
     });
-    
-    // Show a toast if no chart data
-    if (!data.chartData) {
-      console.log('No chart data found in response');
+  }
+
+  // SIMPLIFIED CHART DISPLAY METHOD
+  displayChartWithData(chartData, chartType = 'auto', chartTitle = 'Data Visualization') {
+    if (!window.chartManager) {
+      console.error('Chart manager not available');
+      return false;
+    }
+
+    console.log('Displaying chart:', { chartType, chartTitle });
+
+    // Validate chart data
+    if (!chartData || !chartData.datasets || !Array.isArray(chartData.datasets) || chartData.datasets.length === 0) {
+      console.error('Invalid chart data');
+      return false;
+    }
+
+    // Ensure labels exist
+    if (!chartData.labels || !Array.isArray(chartData.labels)) {
+      console.warn('No labels provided, generating default labels');
+      chartData.labels = chartData.datasets[0].data.map((_, i) => `Item ${i + 1}`);
+    }
+
+    try {
+      // Update the chart
+      const success = window.chartManager.updateChart(chartData, chartType, chartTitle);
+      
+      if (success) {
+        console.log('✅ Chart displayed successfully');
+        // Ensure chart section is visible
+        this.elements.chartSection.style.display = 'block';
+        this.elements.chartSection.style.opacity = '1';
+        return true;
+      } else {
+        console.error('❌ Chart update returned false');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error displaying chart:', error);
+      return false;
     }
   }
 
-  askForChartIfNeeded(response) {
-    // Optionally ask AI to generate a chart for the data
-    const chartKeywords = ['chart', 'graph', 'visualization', 'visualize', 'plot', 'diagram'];
-    const analysisText = response.analysis.toLowerCase();
-    
-    if (chartKeywords.some(keyword => analysisText.includes(keyword))) {
-      // User mentioned charts, but AI didn't provide one
-      setTimeout(() => {
-        this.showToast('info', 'Chart requested but not generated. Try asking specifically: "Create a bar chart of the data"');
-      }, 2000);
-    }
-  }
-
-  // Parse markdown to structured data
+  // Simple markdown parser for AI responses
   parseMarkdownToStructuredData(markdown) {
     const lines = markdown.split('\n');
     const sections = {
@@ -385,7 +407,6 @@ class DataExaminerApp {
       
       if (!line) continue;
 
-      // Check for main overview heading
       if (line.startsWith('# ')) {
         if (currentContent) {
           sections.rawSections.push({
@@ -397,9 +418,7 @@ class DataExaminerApp {
         }
         sections.overview = line.replace('# ', '');
         currentSection = 'overview';
-      }
-      // Check for Key Metrics heading
-      else if (line.startsWith('## Key Metrics')) {
+      } else if (line.startsWith('## Key Metrics')) {
         if (currentContent) {
           sections.rawSections.push({
             type: 'paragraph',
@@ -409,9 +428,7 @@ class DataExaminerApp {
           currentContent = '';
         }
         currentSection = 'metrics';
-      }
-      // Check for Key Insights heading
-      else if (line.startsWith('## Key Insights')) {
+      } else if (line.startsWith('## Key Insights')) {
         if (currentContent) {
           sections.rawSections.push({
             type: 'paragraph',
@@ -421,9 +438,7 @@ class DataExaminerApp {
           currentContent = '';
         }
         currentSection = 'insights';
-      }
-      // Check for Recommendations heading
-      else if (line.startsWith('## Recommendations')) {
+      } else if (line.startsWith('## Recommendations')) {
         if (currentContent) {
           sections.rawSections.push({
             type: 'paragraph',
@@ -433,9 +448,7 @@ class DataExaminerApp {
           currentContent = '';
         }
         currentSection = 'recommendations';
-      }
-      // Check for Key Finding heading
-      else if (line.startsWith('## Key Finding')) {
+      } else if (line.startsWith('## Key Finding')) {
         if (currentContent) {
           sections.rawSections.push({
             type: 'paragraph',
@@ -445,40 +458,27 @@ class DataExaminerApp {
           currentContent = '';
         }
         currentSection = 'key finding';
-      }
-      // Parse metrics (Key: Value format)
-      else if (currentSection === 'metrics' && line.includes(':')) {
+      } else if (currentSection === 'metrics' && line.includes(':')) {
         const [label, value] = line.split(':').map(s => s.trim());
         sections.metrics.push({ label, value });
-      }
-      // Parse insights (bullet points)
-      else if (currentSection === 'insights' && line.startsWith('-')) {
+      } else if (currentSection === 'insights' && line.startsWith('-')) {
         const insight = line.replace(/^-\s*/, '').trim();
         if (insight) sections.insights.push(insight);
-      }
-      // Parse recommendations (numbered list)
-      else if (currentSection === 'recommendations' && line.match(/^\d+\./)) {
+      } else if (currentSection === 'recommendations' && line.match(/^\d+\./)) {
         const rec = line.replace(/^\d+\.\s*/, '').trim();
         if (rec) sections.recommendations.push(rec);
-      }
-      // Parse key finding (paragraph after heading)
-      else if (currentSection === 'key finding' && line && !line.startsWith('#')) {
+      } else if (currentSection === 'key finding' && line && !line.startsWith('#')) {
         sections.keyFindings.push(line);
-        currentSection = ''; // Reset after capturing
-      }
-      // Skip code blocks
-      else if (line.startsWith('```')) {
+        currentSection = '';
+      } else if (line.startsWith('```')) {
         while (i < lines.length && !lines[i].includes('```')) {
           i++;
         }
-      }
-      // Capture other content
-      else if (line && !line.startsWith('##') && !line.startsWith('#')) {
+      } else if (line && !line.startsWith('##') && !line.startsWith('#')) {
         currentContent += line + ' ';
       }
     }
 
-    // Add any remaining content
     if (currentContent) {
       sections.rawSections.push({
         type: 'paragraph',
@@ -490,32 +490,25 @@ class DataExaminerApp {
     return sections;
   }
 
-  // Create beautiful HTML response from markdown
   createBeautifulResponseFromMarkdown(markdown) {
-    // First, check if this is already formatted HTML
     if (markdown.includes('<div class="ai-summary">')) {
-      return markdown; // Already formatted, return as-is
+      return markdown;
     }
     
-    // Try to parse as structured data
     const structuredData = this.parseMarkdownToStructuredData(markdown);
     
-    // Check if we got any structured data
     if (structuredData.overview || 
         structuredData.metrics.length > 0 || 
         structuredData.insights.length > 0) {
       return this.createBeautifulHTML(structuredData);
     } else {
-      // Fallback: format as plain text with basic styling
       return `<div class="message-content-plain">${this.simpleMarkdownToHTML(markdown)}</div>`;
     }
   }
 
-  // Helper function for simple markdown to HTML conversion
   simpleMarkdownToHTML(text) {
     if (!text) return '';
     
-    // Convert markdown to simple HTML
     return text
       .replace(/^### (.*$)/gm, '<h3>$1</h3>')
       .replace(/^## (.*$)/gm, '<h2>$1</h2>')
@@ -528,7 +521,6 @@ class DataExaminerApp {
       .replace(/<\/p><p>/g, '</p><p>');
   }
 
-  // Create beautiful HTML from structured data
   createBeautifulHTML(structuredData) {
     const { overview, metrics, insights, recommendations, keyFindings } = structuredData;
     
@@ -544,7 +536,7 @@ class DataExaminerApp {
       </div>
     `;
     
-    // Overview - Always show
+    // Overview
     html += `
       <div class="summary-section">
         <div class="section-header">
@@ -643,7 +635,6 @@ class DataExaminerApp {
         </div>
       `;
     } else if (insights.length > 0) {
-      // Use first insight as key finding if none provided
       html += `
         <div class="highlight-box">
           <h4 class="highlight-title"><i class="fas fa-star"></i> Key Finding</h4>
@@ -654,53 +645,6 @@ class DataExaminerApp {
     
     html += '</div>';
     return html;
-  }
-
-  // SAFE CHART UPDATE FUNCTION
-  safelyUpdateChart(chartData, chartType = 'auto', chartTitle = 'Data Visualization') {
-    if (!window.chartManager) {
-      console.error('Chart manager not available');
-      return false;
-    }
-
-    try {
-      // Force destroy any existing chart instances on the canvas
-      const canvas = document.getElementById('dataChart');
-      if (canvas && Chart.instances) {
-        // Create a copy of the instances array since we might modify it
-        const instances = [...Chart.instances];
-        instances.forEach((chart) => {
-          if (chart.canvas === canvas) {
-            console.log('Found existing chart instance, destroying:', chart.id || 'unknown');
-            try {
-              chart.destroy();
-            } catch (error) {
-              console.warn('Error destroying chart instance:', error);
-            }
-          }
-        });
-      }
-
-      // Now update the chart
-      window.chartManager.updateChart(chartData, chartType, chartTitle);
-      return true;
-    } catch (error) {
-      console.error('Error in safelyUpdateChart:', error);
-      // Try one more time with a fresh chart manager
-      try {
-        const canvas = document.getElementById('dataChart');
-        if (canvas) {
-          window.chartManager.destroy();
-          window.chartManager = new ChartManager(canvas);
-          window.chartManager.initialize();
-          window.chartManager.updateChart(chartData, chartType, chartTitle);
-          return true;
-        }
-      } catch (retryError) {
-        console.error('Retry also failed:', retryError);
-      }
-      return false;
-    }
   }
 
   addMessage(role, content, useTypewriter = false) {
@@ -715,14 +659,12 @@ class DataExaminerApp {
       this.elements.messagesContainer.appendChild(messageDiv);
       this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
       
-      // Store user message in conversation context
       this.conversationContext.push({
         role: 'user',
         content: content,
         timestamp: new Date().toISOString()
       });
     } else if (!useTypewriter) {
-      // For errors or non-typing messages
       messageDiv.innerHTML = `
         <div class="message-avatar">AI</div>
         <div class="message-content">${this.formatMarkdown(content)}</div>
@@ -730,18 +672,15 @@ class DataExaminerApp {
       this.elements.messagesContainer.appendChild(messageDiv);
       this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
       
-      // Store AI response in conversation context
       this.conversationContext.push({
         role: 'assistant',
         content: content,
         timestamp: new Date().toISOString()
       });
     }
-    // Bot messages with typewriter are handled in handleAnalysisResponse
   }
 
   formatMarkdown(text) {
-    // Simple markdown formatter for user messages
     return text
       .replace(/^### (.*$)/gm, '<h3>$1</h3>')
       .replace(/^## (.*$)/gm, '<h2>$1</h2>')
@@ -770,7 +709,6 @@ class DataExaminerApp {
   }
 
   renderHistory() {
-    // Implementation for history rendering
     const historyList = this.elements.analysisHistory;
     if (!historyList) return;
 
@@ -806,7 +744,6 @@ class DataExaminerApp {
     this.currentSessionId = entry.sessionId;
     this.conversationContext = entry.conversationContext || [];
     
-    // Replay the conversation
     if (this.conversationContext.length > 0) {
       this.conversationContext.forEach(msg => {
         if (msg.role === 'user') {
@@ -816,18 +753,15 @@ class DataExaminerApp {
         }
       });
     } else if (entry.full) {
-      // Fallback: just show the analysis
       this.addMessage('bot', entry.full, false);
     }
     
-    // Load chart if available
     if (entry.chartData && window.chartManager) {
-      this.safelyUpdateChart(
+      this.displayChartWithData(
         entry.chartData,
         'auto',
         'Historical Data Visualization'
       );
-      this.elements.chartSection.style.display = 'block';
     }
     
     this.elements.welcomeScreen.style.display = 'none';
@@ -848,7 +782,6 @@ class DataExaminerApp {
     `;
     this.elements.toastContainer.appendChild(toast);
     
-    // Auto-remove after 4 seconds
     setTimeout(() => {
       if (toast.parentNode) {
         toast.remove();
@@ -858,7 +791,7 @@ class DataExaminerApp {
 
   updateChartType(type) {
     if (window.chartManager && window.chartManager.currentChart) {
-      this.safelyUpdateChart(window.chartManager.chartData, type, window.chartManager.currentChart.options.plugins.title.text);
+      window.chartManager.updateChartType(type);
     }
   }
 
@@ -880,14 +813,12 @@ class DataExaminerApp {
     this.elements.messageInput.value = '';
     this.elements.messageInput.style.height = 'auto';
     
-    // Reset chart
     if (window.chartManager) {
       window.chartManager.showNoData();
     }
   }
 
   installPWA() {
-    // Check if PWA is installable
     if (window.deferredPrompt) {
       window.deferredPrompt.prompt();
       window.deferredPrompt.userChoice.then((choiceResult) => {
@@ -913,71 +844,71 @@ class DataExaminerApp {
     this.showToast('success', 'Sample sales data loaded. Click "Analyze" to get insights!');
   }
 
-  // Test chart functionality
-  testChartDisplay() {
-    const testChartData = {
-      labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+  // TEST FUNCTION - Simple test chart
+  testChart() {
+    console.log('🔧 Testing chart system...');
+    
+    const testData = {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
       datasets: [{
-        label: 'Sales 2024',
-        data: [65, 59, 80, 81, 56, 55, 40],
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.2)',
-          'rgba(255, 159, 64, 0.2)',
-          'rgba(255, 205, 86, 0.2)',
-          'rgba(75, 192, 192, 0.2)',
-          'rgba(54, 162, 235, 0.2)',
-          'rgba(153, 102, 255, 0.2)',
-          'rgba(201, 203, 207, 0.2)'
-        ],
-        borderColor: [
-          'rgb(255, 99, 132)',
-          'rgb(255, 159, 64)',
-          'rgb(255, 205, 86)',
-          'rgb(75, 192, 192)',
-          'rgb(54, 162, 235)',
-          'rgb(153, 102, 255)',
-          'rgb(201, 203, 207)'
-        ],
-        borderWidth: 1
+        label: 'Test Sales',
+        data: [65, 59, 80, 81, 56, 55],
+        backgroundColor: 'rgba(16, 163, 127, 0.8)',
+        borderColor: 'rgba(16, 163, 127, 1)',
+        borderWidth: 2
       }]
     };
     
-    // Update chart
-    this.safelyUpdateChart(
-      testChartData,
-      'bar',
-      'Test Sales Data'
-    );
-    
-    if (this.elements.chartSection.style.display === 'block') {
-      // Show chart section
-      this.elements.chartSection.style.display = 'block';
-      this.elements.chartSection.style.opacity = '1';
-      this.showToast('success', 'Test chart displayed!');
-      
-      // Also show a test analysis
-      this.addMessage('bot', '**Test Analysis Complete**\n\nThis is a test chart to verify chart display functionality. The chart shows sample sales data for 2024.', false);
+    if (window.chartManager) {
+      const success = this.displayChartWithData(testData, 'bar', 'Test Chart');
+      if (success) {
+        this.showToast('success', 'Test chart displayed!');
+        console.log('✅ Test chart should be visible');
+      } else {
+        this.showToast('error', 'Failed to display test chart');
+        console.log('❌ Test chart failed');
+      }
     } else {
       this.showToast('error', 'Chart manager not initialized');
+      console.log('❌ Chart manager not available');
     }
   }
 }
 
 // Initialize the app
-let chartManager;
-
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new DataExaminerApp();
   
   // Initialize chart manager
   const chartCanvas = document.getElementById('dataChart');
   if (chartCanvas) {
-    chartManager = new ChartManager(chartCanvas);
+    const chartManager = new ChartManager(chartCanvas);
     window.chartManager = chartManager;
     chartManager.initialize();
-    console.log('Chart manager initialized');
+    console.log('✅ Chart manager initialized');
+    
+    // Show initial test chart
+    setTimeout(() => {
+      console.log('🔄 Showing initial test chart');
+      const testData = {
+        labels: ['Loading', 'System', 'Ready'],
+        datasets: [{
+          label: 'Status',
+          data: [100, 75, 50],
+          backgroundColor: 'rgba(16, 163, 127, 0.6)'
+        }]
+      };
+      chartManager.updateChart(testData, 'bar', 'System Status');
+      
+      // Show chart section
+      const chartSection = document.getElementById('chartSection');
+      if (chartSection) {
+        chartSection.style.display = 'block';
+        chartSection.style.opacity = '1';
+      }
+    }, 1000);
   } else {
-    console.error('Chart canvas not found!');
+    console.error('❌ Chart canvas not found!');
   }
   
   // Initialize history display
@@ -994,7 +925,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   
-  // Add test functionality to window for debugging
-  window.testChart = () => window.app.testChartDisplay();
-  console.log('Test functions: testChart() available in console');
+  // Add test function to window for debugging
+  window.testChart = () => window.app.testChart();
+  
+  console.log('🚀 Data Examiner loaded!');
+  console.log('📊 Test function available: testChart()');
 });

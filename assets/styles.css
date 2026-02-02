@@ -1979,24 +1979,8 @@ body {
     padding: var(--spacing-md);
   }
   
-  .input-group {
-    flex-direction: column;
-  }
-  
-  .input-actions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: var(--spacing-sm);
-  }
-  
-  .send-btn {
-    height: 52px;
-    font-size: 1rem;
-  }
-  
   .metrics-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
   
   .message {
@@ -2604,4 +2588,26 @@ html, body {
 
 .overlay.active {
   display: block;
+}
+
+/* ===== TEST CHART BUTTON ===== */
+.test-chart-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  transition: all var(--transition-fast);
+  min-height: 44px;
+}
+
+.test-chart-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
