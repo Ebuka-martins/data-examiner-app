@@ -303,7 +303,8 @@ class DataExaminerApp {
     if (res.chartData && window.chartManager) {
       console.log('Displaying chart with data:', res.chartData);
       try {
-        window.chartManager.updateChart(
+        // Use the safe chart update method
+        this.safelyUpdateChart(
           res.chartData,
           res.chartType || 'auto',
           res.chartTitle || 'Data Visualization'
@@ -655,6 +656,53 @@ class DataExaminerApp {
     return html;
   }
 
+  // SAFE CHART UPDATE FUNCTION
+  safelyUpdateChart(chartData, chartType = 'auto', chartTitle = 'Data Visualization') {
+    if (!window.chartManager) {
+      console.error('Chart manager not available');
+      return false;
+    }
+
+    try {
+      // Force destroy any existing chart instances on the canvas
+      const canvas = document.getElementById('dataChart');
+      if (canvas && Chart.instances) {
+        // Create a copy of the instances array since we might modify it
+        const instances = [...Chart.instances];
+        instances.forEach((chart) => {
+          if (chart.canvas === canvas) {
+            console.log('Found existing chart instance, destroying:', chart.id || 'unknown');
+            try {
+              chart.destroy();
+            } catch (error) {
+              console.warn('Error destroying chart instance:', error);
+            }
+          }
+        });
+      }
+
+      // Now update the chart
+      window.chartManager.updateChart(chartData, chartType, chartTitle);
+      return true;
+    } catch (error) {
+      console.error('Error in safelyUpdateChart:', error);
+      // Try one more time with a fresh chart manager
+      try {
+        const canvas = document.getElementById('dataChart');
+        if (canvas) {
+          window.chartManager.destroy();
+          window.chartManager = new ChartManager(canvas);
+          window.chartManager.initialize();
+          window.chartManager.updateChart(chartData, chartType, chartTitle);
+          return true;
+        }
+      } catch (retryError) {
+        console.error('Retry also failed:', retryError);
+      }
+      return false;
+    }
+  }
+
   addMessage(role, content, useTypewriter = false) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message`;
@@ -774,7 +822,7 @@ class DataExaminerApp {
     
     // Load chart if available
     if (entry.chartData && window.chartManager) {
-      window.chartManager.updateChart(
+      this.safelyUpdateChart(
         entry.chartData,
         'auto',
         'Historical Data Visualization'
@@ -809,7 +857,9 @@ class DataExaminerApp {
   }
 
   updateChartType(type) {
-    window.chartManager?.updateChartType(type);
+    if (window.chartManager && window.chartManager.currentChart) {
+      this.safelyUpdateChart(window.chartManager.chartData, type, window.chartManager.currentChart.options.plugins.title.text);
+    }
   }
 
   exportChart() {
@@ -893,13 +943,13 @@ class DataExaminerApp {
     };
     
     // Update chart
-    if (window.chartManager) {
-      window.chartManager.updateChart(
-        testChartData,
-        'bar',
-        'Test Sales Data'
-      );
-      
+    this.safelyUpdateChart(
+      testChartData,
+      'bar',
+      'Test Sales Data'
+    );
+    
+    if (this.elements.chartSection.style.display === 'block') {
       // Show chart section
       this.elements.chartSection.style.display = 'block';
       this.elements.chartSection.style.opacity = '1';

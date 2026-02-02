@@ -139,7 +139,10 @@ class ChartManager {
       }
     });
     
-    console.log('Chart initialized with no data state');
+    // Add chart ID for debugging
+    this.currentChart.id = `chart-initial-${Date.now()}`;
+    
+    console.log('Chart initialized with no data state, ID:', this.currentChart.id);
   }
 
   updateChart(data, type = 'auto', title = 'Data Visualization') {
@@ -154,11 +157,38 @@ class ChartManager {
       title 
     });
 
-    // Destroy previous chart to allow safe type change
+    // Destroy previous chart if it exists
     if (this.currentChart) {
-      console.log('Destroying previous chart');
-      this.currentChart.destroy();
-      this.currentChart = null;
+      console.log('Destroying previous chart with ID:', this.currentChart.id);
+      try {
+        this.currentChart.destroy();
+        this.currentChart = null;
+        // Clear the canvas context
+        const ctx = this.canvas.getContext('2d');
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      } catch (error) {
+        console.warn('Error destroying previous chart:', error);
+        // Force remove the canvas and recreate if needed
+        const parent = this.canvas.parentNode;
+        const newCanvas = this.canvas.cloneNode();
+        parent.removeChild(this.canvas);
+        parent.appendChild(newCanvas);
+        this.canvas = newCanvas;
+      }
+    }
+
+    // Also check for any other chart instances using this canvas
+    if (Chart.instances) {
+      Chart.instances.forEach((chart, index) => {
+        if (chart.canvas === this.canvas) {
+          console.log('Found additional chart instance, destroying:', chart.id);
+          try {
+            chart.destroy();
+          } catch (error) {
+            console.warn('Error destroying additional chart instance:', error);
+          }
+        }
+      });
     }
 
     if (!data || !data.datasets || data.datasets.length === 0) {
@@ -188,10 +218,13 @@ class ChartManager {
         options
       });
 
+      // Add chart ID for debugging
+      this.currentChart.id = `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
       this.applyColors();
       this.currentChart.update();
       
-      console.log('Chart updated successfully');
+      console.log('Chart updated successfully with ID:', this.currentChart.id);
     } catch (error) {
       console.error('Error creating chart:', error);
       this.showNoData();
@@ -403,11 +436,23 @@ class ChartManager {
   showNoData() {
     if (!this.canvas) return;
     
+    // Force destroy all existing charts on this canvas
+    if (this.currentChart) {
+      try {
+        this.currentChart.destroy();
+      } catch (error) {
+        console.warn('Error destroying chart:', error);
+      }
+      this.currentChart = null;
+    }
+    
+    // Clear canvas
     const ctx = this.canvas.getContext('2d');
-    if (this.currentChart) this.currentChart.destroy();
-
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
     console.log('Showing "No Data" chart state');
     
+    // Create new chart
     this.currentChart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -421,14 +466,18 @@ class ChartManager {
         }]
       },
       options: {
-        ...this.defaultOptions,
-        plugins: { 
-          ...this.defaultOptions.plugins, 
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
           title: {
-            ...this.defaultOptions.plugins.title,
-            text: 'No Data Available'
+            display: true,
+            text: 'No Data Available',
+            color: 'var(--text-primary)',
+            font: { size: 16, weight: 'bold' },
+            padding: { top: 10, bottom: 20 }
           },
-          tooltip: { enabled: false } 
+          tooltip: { enabled: false }
         },
         scales: {
           x: { display: false },
@@ -436,6 +485,9 @@ class ChartManager {
         }
       }
     });
+    
+    // Add chart ID for debugging
+    this.currentChart.id = `chart-nodata-${Date.now()}`;
   }
 
   exportChart(format = 'png', quality = 1.0) {
@@ -462,9 +514,21 @@ class ChartManager {
 
   destroy() {
     if (this.currentChart) {
-      this.currentChart.destroy();
+      console.log('Destroying chart with ID:', this.currentChart.id);
+      try {
+        this.currentChart.destroy();
+      } catch (error) {
+        console.warn('Error destroying chart:', error);
+      }
       this.currentChart = null;
     }
+    
+    // Clear canvas
+    if (this.canvas) {
+      const ctx = this.canvas.getContext('2d');
+      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    
     this.chartData = null;
     console.log('Chart manager destroyed');
   }
