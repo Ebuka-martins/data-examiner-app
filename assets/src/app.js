@@ -18,7 +18,7 @@ class DataExaminerApp {
 
   initializeElements() {
     const ids = [
-      'sidebar', 'menuToggle', 'newChat', 'fileInput', 'uploadBtn',
+      'sidebar', 'menuToggle', 'sidebarClose', 'sidebarOverlay', 'newChat', 'fileInput', 'uploadBtn',
       'dataInput', 'analyzePaste', 'analysisHistory', 'statusIndicator',
       'welcomeScreen', 'messagesContainer', 'chatContainer', 'chartSection',
       'dataChart', 'chartType', 'exportChart', 'messageInput', 'attachBtn',
@@ -43,9 +43,38 @@ class DataExaminerApp {
   }
 
   initializeEventListeners() {
-    this.elements.menuToggle?.addEventListener('click', () =>
-      this.elements.sidebar.classList.toggle('active')
-    );
+    // Sidebar toggle functionality
+    this.elements.menuToggle?.addEventListener('click', () => {
+      this.toggleSidebar();
+    });
+
+    this.elements.sidebarClose?.addEventListener('click', () => {
+      this.toggleSidebar(false);
+    });
+
+    this.elements.sidebarOverlay?.addEventListener('click', () => {
+      this.toggleSidebar(false);
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth < 1024) {
+        const isClickInsideSidebar = this.elements.sidebar?.contains(e.target);
+        const isClickOnMenuToggle = this.elements.menuToggle?.contains(e.target);
+        
+        if (!isClickInsideSidebar && !isClickOnMenuToggle && this.isSidebarOpen()) {
+          this.toggleSidebar(false);
+        }
+      }
+    });
+
+    // Close sidebar with Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isSidebarOpen()) {
+        this.toggleSidebar(false);
+      }
+    });
+
     this.elements.newChat?.addEventListener('click', () => this.resetAnalysis());
 
     this.elements.uploadBtn?.addEventListener('click', () =>
@@ -103,6 +132,31 @@ class DataExaminerApp {
 
     window.addEventListener('online', () => this.updateOnlineStatus(true));
     window.addEventListener('offline', () => this.updateOnlineStatus(false));
+  }
+
+  toggleSidebar(show) {
+    const sidebar = this.elements.sidebar;
+    const overlay = this.elements.sidebarOverlay;
+    
+    if (sidebar && overlay) {
+      if (show === undefined) {
+        show = !sidebar.classList.contains('active');
+      }
+      
+      if (show) {
+        sidebar.classList.add('active');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      } else {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    }
+  }
+
+  isSidebarOpen() {
+    return this.elements.sidebar?.classList.contains('active');
   }
 
   registerServiceWorker() {
