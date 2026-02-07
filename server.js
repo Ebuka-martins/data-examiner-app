@@ -23,14 +23,20 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-        scriptSrcElem: ["'self'", 'https://cdn.jsdelivr.net'],
-        connectSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.jsdelivr.net'],
+        scriptSrcElem: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
-        fontSrc: ["'self'", 'https://cdnjs.cloudflare.com'],
-        imgSrc: ["'self'", 'data:', 'https:'],
+        styleSrcElem: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
+        fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+        connectSrc: ["'self'", 'https://api.groq.com'],
+        workerSrc: ["'self'", 'blob:'],
+        frameSrc: ["'self'"],
+        manifestSrc: ["'self'"]
       },
     },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
 
@@ -43,14 +49,58 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Static files - FIXED PATH
 // ==========================
 // Serve static files from the 'assets' directory
-app.use(express.static(path.join(__dirname, 'assets')));
+app.use(express.static(path.join(__dirname, 'assets'), {
+  index: false,
+  setHeaders: (res, path) => {
+    // Set proper caching headers
+    if (path.endsWith('.js') || path.endsWith('.css') || path.endsWith('.png') || path.endsWith('.jpg')) {
+      res.set('Cache-Control', 'public, max-age=31536000');
+    }
+  }
+}));
+
+// Explicit routes for specific assets
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'assets', 'index.html'));
+});
+
+app.get('/index.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'assets', 'index.html'));
+});
 
 // Serve JavaScript files from src directory
-app.use('/src', express.static(path.join(__dirname, 'assets/src')));
+app.use('/src', express.static(path.join(__dirname, 'assets', 'src'), {
+  maxAge: '1y'
+}));
 
 // Serve icon files
-app.use('/icons', express.static(path.join(__dirname, 'assets/icons')));
-app.use('/favicon', express.static(path.join(__dirname, 'assets/favicon')));
+app.use('/icons', express.static(path.join(__dirname, 'assets', 'icons'), {
+  maxAge: '1y'
+}));
+
+app.use('/favicon', express.static(path.join(__dirname, 'assets', 'favicon'), {
+  maxAge: '1y'
+}));
+
+// Serve manifest and service worker with proper headers
+app.get('/manifest.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'assets', 'manifest.json'), {
+    headers: {
+      'Content-Type': 'application/manifest+json',
+      'Cache-Control': 'public, max-age=3600'
+    }
+  });
+});
+
+app.get('/service-worker.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'assets', 'service-worker.js'), {
+    headers: {
+      'Content-Type': 'application/javascript',
+      'Service-Worker-Allowed': '/',
+      'Cache-Control': 'no-cache'
+    }
+  });
+});
 
 // ==========================
 // Multer setup
@@ -584,4 +634,5 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📈 Test chart: http://localhost:${PORT}/api/test/chart`);
   console.log(`🌐 Frontend: http://localhost:${PORT}/`);
+  console.log(`📱 PWA ready: http://localhost:${PORT}/manifest.json`);
 });

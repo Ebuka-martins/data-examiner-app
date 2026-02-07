@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Data Examiner - AI Data Analysis</title>
    
@@ -26,7 +26,6 @@
    
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#10a37f">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Data Examiner">
     <meta name="description" content="Upload CSV/Excel files or paste data for instant AI-powered analysis with visual charts">
    
@@ -69,6 +68,7 @@
                     <p>Max size: 10MB</p>
                 </div>
             </section>
+            
             <!-- Paste Data Section -->
             <section class="sidebar-section" aria-labelledby="paste-heading">
                 <h3 id="paste-heading"><i class="fas fa-paste" aria-hidden="true"></i> Paste Data</h3>
@@ -82,6 +82,7 @@
                     </button>
                 </div>
             </section>
+            
             <!-- Recent Analyses -->
             <section class="sidebar-section history-section" aria-labelledby="history-heading">
                 <h3 id="history-heading"><i class="fas fa-history" aria-hidden="true"></i> Recent Analyses</h3>
@@ -92,6 +93,7 @@
                     </div>
                 </div>
             </section>
+            
             <!-- Status & Info -->
             <footer class="sidebar-footer">
                 <div class="status-indicator" id="statusIndicator">
@@ -126,6 +128,7 @@
                     </button>
                 </div>
             </header>
+            
             <!-- Chat Container -->
             <div class="chat-container" id="chatContainer">
                 <!-- Welcome Message -->
@@ -182,9 +185,11 @@
                         </div>
                     </div>
                 </div>
+                
                 <!-- Messages Container -->
                 <div class="messages-container" id="messagesContainer"></div>
             </div>
+            
             <!-- Chart Container -->
             <section class="chart-section" id="chartSection" aria-labelledby="chart-heading">
                 <div class="chart-header">
@@ -205,6 +210,7 @@
                     <canvas id="dataChart" role="img" aria-label="Data visualization chart"></canvas>
                 </div>
             </section>
+            
             <!-- Input Area -->
             <footer class="input-section">
                 <div class="input-container">
@@ -239,6 +245,7 @@
             </footer>
         </main>
     </div>
+    
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
         <div class="loading-content">
@@ -254,14 +261,49 @@
             </div>
         </div>
     </div>
+    
     <!-- Message Toast -->
     <div class="toast-container" id="toastContainer" role="alert"></div>
+    
     <!-- Import JavaScript files -->
     <script src="/src/app.js"></script>
     <script src="/src/api.js"></script>
     <script src="/src/chart.js"></script>
     <script src="/src/file-analyzer.js"></script>
    
+    <!-- Service Worker Registration -->
+    <script>
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registered:', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            console.log('🔄 Service Worker update found');
+                            
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('📦 New content available, please refresh');
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.error('❌ Service Worker registration failed:', error);
+                    });
+            });
+            
+            // Let the service worker control the page immediately
+            navigator.serviceWorker.ready.then(() => {
+                console.log('🏁 Service Worker ready');
+            });
+        }
+    </script>
+    
     <!-- Sample Data -->
     <script>
         // Sample data for testing
@@ -287,6 +329,31 @@
        
         // Make sampleData available globally
         window.sampleData = sampleData;
+        
+        // PWA Install Prompt
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            const installBtn = document.getElementById('installBtn');
+            if (installBtn) {
+                installBtn.style.display = 'flex';
+                installBtn.addEventListener('click', () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'accepted') {
+                                console.log('User accepted the install prompt');
+                            }
+                            deferredPrompt = null;
+                            installBtn.style.display = 'none';
+                        });
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html>
