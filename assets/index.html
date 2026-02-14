@@ -190,25 +190,37 @@
                 <div class="messages-container" id="messagesContainer"></div>
             </div>
             
-            <!-- Chart Container -->
+            <!-- Chart Container with Slide Toggle -->
             <section class="chart-section" id="chartSection" aria-labelledby="chart-heading">
-                <div class="chart-header">
-                    <h3 id="chart-heading"><i class="fas fa-chart-line" aria-hidden="true"></i> Data Visualization</h3>
-                    <div class="chart-controls">
-                        <select id="chartType" class="chart-select" aria-label="Select chart type">
-                            <option value="line">Line Chart</option>
-                            <option value="bar">Bar Chart</option>
-                            <option value="pie">Pie Chart</option>
-                            <option value="doughnut">Doughnut Chart</option>
-                        </select>
-                        <button id="exportChart" class="chart-btn" aria-label="Export chart">
-                            <i class="fas fa-download" aria-hidden="true"></i> Export
-                        </button>
+                <!-- Toggle Button -->
+                <button class="chart-toggle-btn" id="chartToggleBtn" aria-label="Toggle chart visibility">
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                    <span>Hide Chart</span>
+                </button>
+                
+                <!-- Chart Content -->
+                <div class="chart-content">
+                    <div class="chart-header">
+                        <h3 id="chart-heading"><i class="fas fa-chart-line" aria-hidden="true"></i> Data Visualization</h3>
+                        <div class="chart-controls">
+                            <select id="chartType" class="chart-select" aria-label="Select chart type">
+                                <option value="line">Line Chart</option>
+                                <option value="bar">Bar Chart</option>
+                                <option value="pie">Pie Chart</option>
+                                <option value="doughnut">Doughnut Chart</option>
+                            </select>
+                            <button id="exportChart" class="chart-btn" aria-label="Export chart">
+                                <i class="fas fa-download" aria-hidden="true"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="dataChart" role="img" aria-label="Data visualization chart"></canvas>
                     </div>
                 </div>
-                <div class="chart-wrapper">
-                    <canvas id="dataChart" role="img" aria-label="Data visualization chart"></canvas>
-                </div>
+                
+                <!-- Optional Resize Handle -->
+                <div class="chart-resize-handle" id="chartResizeHandle"></div>
             </section>
             
             <!-- Input Area -->

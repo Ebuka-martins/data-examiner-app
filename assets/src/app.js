@@ -1,4 +1,102 @@
-// src/app.js — Data Examiner — FIXED VERSION
+// src/app.js — Data Examiner — COMPLETE FIXED VERSION
+
+// ===== Chart Toggle Manager Class - IMPROVED =====
+class ChartToggleManager {
+    constructor() {
+        this.chartSection = document.getElementById('chartSection');
+        this.toggleBtn = document.getElementById('chartToggleBtn');
+        this.isCollapsed = false;
+        
+        if (this.chartSection && this.toggleBtn) {
+            console.log('📊 Chart toggle manager initialized');
+            this.initialize();
+        } else {
+            console.error('❌ Chart section or toggle button not found!');
+            console.log('chartSection:', this.chartSection);
+            console.log('toggleBtn:', this.toggleBtn);
+        }
+    }
+    
+    initialize() {
+        // Load saved state from localStorage
+        const savedState = localStorage.getItem('chartSectionCollapsed');
+        if (savedState !== null) {
+            this.isCollapsed = savedState === 'true';
+        } else {
+            // Default to not collapsed
+            this.isCollapsed = false;
+        }
+        
+        // Apply initial state
+        this.applyState();
+        
+        // Add click event listener
+        this.toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔄 Chart toggle clicked, current state:', this.isCollapsed);
+            this.toggle();
+        });
+        
+        // Optional: Add keyboard support
+        this.toggleBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.toggle();
+            }
+        });
+        
+        // Make sure chart section is visible initially
+        this.chartSection.style.display = 'block';
+        
+        console.log('📊 Chart toggle manager ready, initial state:', this.isCollapsed ? 'collapsed' : 'expanded');
+    }
+    
+    toggle() {
+        this.isCollapsed = !this.isCollapsed;
+        this.applyState();
+        
+        // Save state to localStorage
+        localStorage.setItem('chartSectionCollapsed', this.isCollapsed);
+        
+        // Dispatch event for other components
+        const event = new CustomEvent('chartToggle', { 
+            detail: { collapsed: this.isCollapsed } 
+        });
+        document.dispatchEvent(event);
+        
+        // Show toast notification
+        if (window.app && window.app.showToast) {
+            window.app.showToast(
+                'info', 
+                `Chart ${this.isCollapsed ? 'hidden' : 'visible'}`
+            );
+        }
+        
+        console.log('📊 Chart toggled:', this.isCollapsed ? 'collapsed' : 'expanded');
+    }
+    
+    applyState() {
+        if (this.isCollapsed) {
+            this.chartSection.classList.add('collapsed');
+            this.toggleBtn.classList.add('collapsed');
+            this.toggleBtn.querySelector('span').textContent = 'Show Chart';
+            this.toggleBtn.setAttribute('aria-label', 'Show chart');
+        } else {
+            this.chartSection.classList.remove('collapsed');
+            this.toggleBtn.classList.remove('collapsed');
+            this.toggleBtn.querySelector('span').textContent = 'Hide Chart';
+            this.toggleBtn.setAttribute('aria-label', 'Hide chart');
+        }
+        
+        // Trigger resize event for Chart.js to recalculate
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 350); // Wait for animation to complete
+    }
+}
+
+// ===== Main Data Examiner App Class =====
 class DataExaminerApp {
   constructor() {
     this.api = new DataExaminerAPI();
@@ -9,6 +107,11 @@ class DataExaminerApp {
     this.analysisHistory = JSON.parse(localStorage.getItem('analysisHistory')) || [];
     this.currentTypingMessage = null;
     this.isSidebarOpen = false;
+    
+    // Chart data storage for toggle functionality
+    this.currentChartData = null;
+    this.currentChartType = 'auto';
+    this.currentChartTitle = 'Data Visualization';
 
     this.elements = {};
     this.initializeElements();
@@ -52,6 +155,22 @@ class DataExaminerApp {
 
   initializeEventListeners() {
     console.log('🔌 Initializing event listeners...');
+    
+    // Chart toggle event listener
+    document.addEventListener('chartToggle', (e) => {
+        console.log(`Chart ${e.detail.collapsed ? 'collapsed' : 'expanded'}`);
+        
+        // If chart is expanded and we have chart data, ensure it's properly displayed
+        if (!e.detail.collapsed && window.chartManager && this.currentChartData) {
+            setTimeout(() => {
+                window.chartManager.updateChart(
+                    this.currentChartData,
+                    this.currentChartType || 'auto',
+                    this.currentChartTitle || 'Data Visualization'
+                );
+            }, 300); // Wait for animation to complete
+        }
+    });
     
     // Sidebar toggle functionality
     if (this.elements.menuToggle) {
@@ -569,6 +688,11 @@ class DataExaminerApp {
   }
 
   displayChartWithData(chartData, chartType = 'auto', chartTitle = 'Data Visualization') {
+    // Store current chart data for when chart is expanded
+    this.currentChartData = chartData;
+    this.currentChartType = chartType;
+    this.currentChartTitle = chartTitle;
+    
     if (!window.chartManager) {
       console.error('❌ Chart manager not available');
       return false;
@@ -589,20 +713,26 @@ class DataExaminerApp {
     }
 
     try {
-      // Update the chart
-      const success = window.chartManager.updateChart(chartData, chartType, chartTitle);
-      
-      if (success) {
-        console.log('✅ Chart displayed successfully');
-        // Ensure chart section is visible
-        if (this.elements.chartSection) {
-          this.elements.chartSection.style.display = 'block';
-          this.elements.chartSection.style.opacity = '1';
+      // Only display if chart section is not collapsed
+      if (!window.chartToggle || !window.chartToggle.isCollapsed) {
+        // Update the chart
+        const success = window.chartManager.updateChart(chartData, chartType, chartTitle);
+        
+        if (success) {
+          console.log('✅ Chart displayed successfully');
+          // Ensure chart section is visible
+          if (this.elements.chartSection) {
+            this.elements.chartSection.style.display = 'block';
+            this.elements.chartSection.style.opacity = '1';
+          }
+          return true;
+        } else {
+          console.error('❌ Chart update returned false');
+          return false;
         }
-        return true;
       } else {
-        console.error('❌ Chart update returned false');
-        return false;
+        console.log('Chart is collapsed, data stored for later display');
+        return true;
       }
     } catch (error) {
       console.error('❌ Error displaying chart:', error);
@@ -1074,6 +1204,9 @@ class DataExaminerApp {
     this.currentSessionId = null;
     this.currentFile = null;
     this.conversationContext = [];
+    this.currentChartData = null;
+    this.currentChartType = 'auto';
+    this.currentChartTitle = 'Data Visualization';
     
     if (this.elements.fileIndicator) {
       this.elements.fileIndicator.style.display = 'none';
@@ -1159,7 +1292,43 @@ class DataExaminerApp {
   }
 }
 
-// Initialize the app
+// ===== Debug functions to test chart toggle =====
+window.testChartToggle = function() {
+    if (window.chartToggle) {
+        console.log('Testing chart toggle...');
+        window.chartToggle.toggle();
+    } else {
+        console.error('Chart toggle not initialized!');
+    }
+};
+
+window.forceChartVisible = function() {
+    const chartSection = document.getElementById('chartSection');
+    if (chartSection) {
+        chartSection.style.display = 'block';
+        chartSection.classList.remove('collapsed');
+        console.log('Chart section forced visible');
+    }
+    
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    if (welcomeScreen) {
+        welcomeScreen.style.display = 'flex';
+        console.log('Welcome screen forced visible');
+    }
+    
+    const toggleBtn = document.getElementById('chartToggleBtn');
+    if (toggleBtn) {
+        toggleBtn.classList.remove('collapsed');
+        toggleBtn.querySelector('span').textContent = 'Hide Chart';
+    }
+};
+
+// Call this after 2 seconds to ensure everything is visible
+setTimeout(() => {
+    window.forceChartVisible();
+}, 2000);
+
+// ===== Initialize the app =====
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🏁 DOM loaded, initializing app...');
   
@@ -1175,6 +1344,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   try {
+    // Make sure chart section is visible initially
+    const chartSection = document.getElementById('chartSection');
+    if (chartSection) {
+      chartSection.style.display = 'block';
+    }
+    
+    // Make sure welcome screen is visible
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    if (welcomeScreen) {
+      welcomeScreen.style.display = 'flex';
+    }
+    
+    // Initialize chart toggle manager first
+    window.chartToggle = new ChartToggleManager();
+    
     window.app = new DataExaminerApp();
     
     // Initialize chart manager
@@ -1197,13 +1381,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }]
         };
         chartManager.updateChart(testData, 'bar', 'System Status');
-        
-        // Show chart section
-        const chartSection = document.getElementById('chartSection');
-        if (chartSection) {
-          chartSection.style.display = 'block';
-          chartSection.style.opacity = '1';
-        }
       }, 1000);
     } else {
       console.error('❌ Chart canvas not found!');
@@ -1229,17 +1406,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     console.log('🚀 Data Examiner loaded!');
-    console.log('🧪 Test function available: testChart()');
-    console.log('🔄 Sidebar toggle available: toggleSidebar(true/false)');
+    console.log('🧪 Test functions available:');
+    console.log('   - testChart() - Show test chart');
+    console.log('   - testChartToggle() - Test chart slide');
+    console.log('   - forceChartVisible() - Reset visibility');
+    console.log('   - toggleSidebar() - Toggle sidebar');
     
-    // Check if sidebar elements exist
-    setTimeout(() => {
-      console.log('🔍 Checking sidebar elements:');
-      console.log('menuToggle:', document.getElementById('menuToggle') ? '✓ Found' : '✗ Missing');
-      console.log('sidebarClose:', document.getElementById('sidebarClose') ? '✓ Found' : '✗ Missing');
-      console.log('sidebarOverlay:', document.getElementById('sidebarOverlay') ? '✓ Found' : '✗ Missing');
-      console.log('sidebar:', document.getElementById('sidebar') ? '✓ Found' : '✗ Missing');
-    }, 500);
+    // Log the state
+    console.log('📊 Chart toggle state:', window.chartToggle ? window.chartToggle.isCollapsed : 'not initialized');
     
   } catch (error) {
     console.error('❌ Error initializing app:', error);
