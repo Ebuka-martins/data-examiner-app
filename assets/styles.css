@@ -535,7 +535,7 @@ body {
     opacity: 1;
 }
 
-/* ===== Main Content ===== */
+/* ===== Main Content - UPDATED FOR BETTER LAYOUT ===== */
 .main-content {
     flex: 1;
     display: flex;
@@ -543,6 +543,7 @@ body {
     overflow: hidden;
     background: var(--bg-primary);
     position: relative;
+    height: 100vh; /* Ensure full height */
 }
 
 /* ===== Header Styling ===== */
@@ -558,6 +559,7 @@ body {
     position: sticky;
     top: 0;
     z-index: var(--z-header);
+    flex-shrink: 0;
 }
 
 .header-left {
@@ -644,12 +646,13 @@ body {
     transform: translateY(-2px);
 }
 
-/* ===== Chat Container ===== */
+/* ===== Chat Container - UPDATED ===== */
 .chat-container {
     flex: 1;
     overflow-y: auto;
     position: relative;
     background: var(--bg-primary);
+    min-height: 0; /* Important for flex children */
 }
 
 .messages-container {
@@ -1150,16 +1153,18 @@ body {
     font-weight: 500;
 }
 
-/* ===== Chart Section with Scrollable Content ===== */
+/* ===== Chart Section with Scrollable Content - UPDATED ===== */
 .chart-section {
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
     transition: all var(--transition-base);
     position: relative;
     max-height: var(--chart-height, 500px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0; /* Prevent chart from shrinking */
 }
 
 .chart-section.collapsed {
@@ -1199,7 +1204,7 @@ body {
     transform: rotate(180deg);
 }
 
-/* Scrollable Chart Content */
+/* Scrollable Chart Content - UPDATED */
 .chart-content {
     padding: var(--space-4);
     transition: opacity var(--transition-base);
@@ -1209,6 +1214,7 @@ body {
     max-height: calc(var(--chart-height, 500px) - 48px);
     scrollbar-width: thin;
     scrollbar-color: var(--text-muted) var(--bg-tertiary);
+    padding-bottom: calc(var(--space-4) * 2); /* Extra padding at bottom */
 }
 
 /* Custom scrollbar styling for chart content */
@@ -1361,12 +1367,28 @@ body {
     opacity: 1;
 }
 
-/* ===== Input Section ===== */
+/* Add a clear separation between chart and input */
+.chart-section::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(transparent, var(--bg-secondary));
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* ===== Input Section - UPDATED ===== */
 .input-section {
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
     padding: var(--space-4);
     position: relative;
+    flex-shrink: 0; /* Prevent input from shrinking */
+    margin-top: auto; /* Push to bottom but maintain spacing */
+    z-index: 10; /* Ensure it's above other elements */
 }
 
 .input-container {
@@ -1761,6 +1783,7 @@ body {
     
     .chart-content {
         max-height: calc(400px - 48px);
+        padding-bottom: calc(var(--space-4) * 2);
     }
     
     .chart-wrapper {
@@ -1826,6 +1849,7 @@ body {
     .chart-content {
         max-height: calc(350px - 48px);
         padding: var(--space-3);
+        padding-bottom: calc(var(--space-4) * 2);
     }
     
     .chart-wrapper {
