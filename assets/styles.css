@@ -1,4 +1,4 @@
-/* styles.css - Ultra Professional Data Examiner Styling */
+/* styles.css - Ultra Professional Data Examiner Styling - COMPLETE WITH SCROLLABLE CHART */
 
 /* ===== CSS Variables & Theme System ===== */
 :root {
@@ -89,7 +89,7 @@
     --sidebar-width: 320px;
     --header-height: 64px;
     --input-height: 120px;
-    --chart-height: 400px;
+    --chart-height: 500px;
 }
 
 /* Dark Mode Variables */
@@ -1150,14 +1150,16 @@ body {
     font-weight: 500;
 }
 
-/* ===== Chart Section ===== */
+/* ===== Chart Section with Scrollable Content ===== */
 .chart-section {
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
     transition: all var(--transition-base);
     position: relative;
-    max-height: var(--chart-height);
+    max-height: var(--chart-height, 500px);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .chart-section.collapsed {
@@ -1181,6 +1183,7 @@ body {
     transition: all var(--transition-fast);
     position: relative;
     z-index: 2;
+    flex-shrink: 0;
 }
 
 .chart-toggle-btn:hover {
@@ -1196,14 +1199,43 @@ body {
     transform: rotate(180deg);
 }
 
+/* Scrollable Chart Content */
 .chart-content {
     padding: var(--space-4);
     transition: opacity var(--transition-base);
+    overflow-y: auto !important;
+    flex: 1;
+    min-height: 0;
+    max-height: calc(var(--chart-height, 500px) - 48px);
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-muted) var(--bg-tertiary);
+}
+
+/* Custom scrollbar styling for chart content */
+.chart-content::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.chart-content::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+}
+
+.chart-content::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: var(--radius-full);
+    transition: background var(--transition-fast);
+}
+
+.chart-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
 .chart-section.collapsed .chart-content {
     opacity: 0;
     pointer-events: none;
+    overflow-y: hidden;
 }
 
 .chart-header {
@@ -1211,6 +1243,8 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+    gap: var(--space-3);
 }
 
 .chart-header h3 {
@@ -1220,6 +1254,7 @@ body {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    margin: 0;
 }
 
 .chart-header h3 i {
@@ -1229,6 +1264,7 @@ body {
 .chart-controls {
     display: flex;
     gap: var(--space-2);
+    flex-wrap: wrap;
 }
 
 .chart-select {
@@ -1272,17 +1308,24 @@ body {
     box-shadow: var(--shadow-md);
 }
 
+/* Chart Wrapper - Canvas Container */
 .chart-wrapper {
     position: relative;
-    height: 300px;
+    min-height: 300px;
+    height: auto;
     width: 100%;
+    margin-bottom: var(--space-4);
 }
 
 .chart-wrapper canvas {
     max-width: 100%;
-    max-height: 100%;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 250px;
+    max-height: 400px;
 }
 
+/* Chart Resize Handle */
 .chart-resize-handle {
     position: absolute;
     bottom: 0;
@@ -1293,6 +1336,7 @@ body {
     cursor: ns-resize;
     opacity: 0;
     transition: opacity var(--transition-fast);
+    flex-shrink: 0;
 }
 
 .chart-section:hover .chart-resize-handle {
@@ -1657,6 +1701,7 @@ body {
 @media (max-width: 1024px) {
     :root {
         --sidebar-width: 280px;
+        --chart-height: 450px;
     }
     
     .quick-actions {
@@ -1665,6 +1710,10 @@ body {
 }
 
 @media (max-width: 768px) {
+    :root {
+        --chart-height: 400px;
+    }
+    
     .sidebar {
         position: fixed;
         left: 0;
@@ -1706,20 +1755,35 @@ body {
         grid-template-columns: 1fr;
     }
     
+    .chart-section {
+        max-height: 400px;
+    }
+    
+    .chart-content {
+        max-height: calc(400px - 48px);
+    }
+    
+    .chart-wrapper {
+        min-height: 250px;
+    }
+    
+    .chart-wrapper canvas {
+        min-height: 200px;
+        max-height: 300px;
+    }
+    
     .chart-header {
         flex-direction: column;
-        gap: var(--space-3);
+        align-items: flex-start;
     }
     
     .chart-controls {
         width: 100%;
-        flex-direction: column;
     }
     
     .chart-select,
     .chart-btn {
-        width: 100%;
-        justify-content: center;
+        flex: 1;
     }
     
     .toast-container {
@@ -1733,6 +1797,7 @@ body {
     :root {
         --space-6: 1rem;
         --space-8: 1.5rem;
+        --chart-height: 350px;
     }
     
     .header-center h2 span {
@@ -1752,6 +1817,24 @@ body {
     
     .metrics-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .chart-section {
+        max-height: 350px;
+    }
+    
+    .chart-content {
+        max-height: calc(350px - 48px);
+        padding: var(--space-3);
+    }
+    
+    .chart-wrapper {
+        min-height: 200px;
+    }
+    
+    .chart-wrapper canvas {
+        min-height: 180px;
+        max-height: 250px;
     }
     
     .input-group {
@@ -1955,5 +2038,6 @@ body {
     
     .chart-content {
         opacity: 1 !important;
+        overflow-y: visible !important;
     }
 }
