@@ -1,4 +1,31 @@
-// src/chart.js - Data Examiner Visualization Manager - COMPLETE FIXED VERSION
+// src/chart.js - Data Examiner Visualization Manager - WITH THEME SUPPORT
+
+// Chart theme colors
+const chartTheme = {
+    light: {
+        gridColor: 'rgba(0, 0, 0, 0.1)',
+        textColor: '#1e293b',
+        tickColor: '#475569',
+        borderColor: '#e2e8f0'
+    },
+    dark: {
+        gridColor: 'rgba(255, 255, 255, 0.1)',
+        textColor: '#f1f5f9',
+        tickColor: '#cbd5e1',
+        borderColor: '#334155'
+    }
+};
+
+// Get current theme
+function getCurrentTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'light';
+}
+
+// Get chart colors based on theme
+function getChartColors() {
+    const theme = getCurrentTheme();
+    return theme === 'dark' ? chartTheme.dark : chartTheme.light;
+}
 
 class ChartManager {
   constructor(canvasElement) {
@@ -6,6 +33,7 @@ class ChartManager {
     this.currentChart = null;
     this.chartData = null;
     this.isDestroyed = false;
+    this.themeObserver = null;
 
     this.defaultOptions = {
       responsive: true,
@@ -14,8 +42,8 @@ class ChartManager {
         legend: {
           position: 'top',
           labels: {
-            color: 'var(--text-primary)',
-            font: { size: 12, family: "'Segoe UI', Roboto, sans-serif" }
+            color: this.getThemeTextColor(),
+            font: { size: 12, family: "'Inter', 'Segoe UI', Roboto, sans-serif" }
           }
         },
         tooltip: {
@@ -43,7 +71,7 @@ class ChartManager {
         title: {
           display: true,
           text: 'Data Visualization',
-          color: 'var(--text-primary)',
+          color: this.getThemeTextColor(),
           font: { size: 16, weight: 'bold' },
           padding: { top: 10, bottom: 20 }
         }
@@ -52,29 +80,39 @@ class ChartManager {
         x: {
           type: 'category',
           grid: { 
-            color: 'var(--border-color)', 
-            drawBorder: false 
+            color: this.getThemeGridColor(),
+            drawBorder: true,
+            borderColor: this.getThemeBorderColor()
           },
           ticks: { 
-            color: 'var(--text-secondary)', 
+            color: this.getThemeTickColor(),
             maxRotation: 45,
-            font: { size: 11 }
+            font: { size: 11, family: "'Inter', 'Segoe UI', Roboto, sans-serif" }
+          },
+          title: {
+            color: this.getThemeTextColor(),
+            font: { size: 12, weight: '500', family: "'Inter', 'Segoe UI', Roboto, sans-serif" }
           }
         },
         y: {
           beginAtZero: true,
           grid: { 
-            color: 'var(--border-color)', 
-            drawBorder: false 
+            color: this.getThemeGridColor(),
+            drawBorder: true,
+            borderColor: this.getThemeBorderColor()
           },
           ticks: {
-            color: 'var(--text-secondary)',
-            font: { size: 11 },
+            color: this.getThemeTickColor(),
+            font: { size: 11, family: "'Inter', 'Segoe UI', Roboto, sans-serif" },
             callback: (value) => {
               if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
               if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
               return value;
             }
+          },
+          title: {
+            color: this.getThemeTextColor(),
+            font: { size: 12, weight: '500', family: "'Inter', 'Segoe UI', Roboto, sans-serif" }
           }
         }
       },
@@ -110,6 +148,92 @@ class ChartManager {
     };
   }
 
+  // Helper methods for theme colors
+  getThemeGridColor() {
+    const colors = getChartColors();
+    return colors.gridColor;
+  }
+
+  getThemeTextColor() {
+    const colors = getChartColors();
+    return colors.textColor;
+  }
+
+  getThemeTickColor() {
+    const colors = getChartColors();
+    return colors.tickColor;
+  }
+
+  getThemeBorderColor() {
+    const colors = getChartColors();
+    return colors.borderColor;
+  }
+
+  // Update chart with current theme colors
+  updateTheme() {
+    if (!this.currentChart) return;
+
+    const colors = getChartColors();
+    
+    // Update scales
+    if (this.currentChart.options.scales?.x) {
+      if (this.currentChart.options.scales.x.grid) {
+        this.currentChart.options.scales.x.grid.color = colors.gridColor;
+        this.currentChart.options.scales.x.grid.borderColor = colors.borderColor;
+      }
+      if (this.currentChart.options.scales.x.ticks) {
+        this.currentChart.options.scales.x.ticks.color = colors.tickColor;
+      }
+      if (this.currentChart.options.scales.x.title) {
+        this.currentChart.options.scales.x.title.color = colors.textColor;
+      }
+    }
+
+    if (this.currentChart.options.scales?.y) {
+      if (this.currentChart.options.scales.y.grid) {
+        this.currentChart.options.scales.y.grid.color = colors.gridColor;
+        this.currentChart.options.scales.y.grid.borderColor = colors.borderColor;
+      }
+      if (this.currentChart.options.scales.y.ticks) {
+        this.currentChart.options.scales.y.ticks.color = colors.tickColor;
+      }
+      if (this.currentChart.options.scales.y.title) {
+        this.currentChart.options.scales.y.title.color = colors.textColor;
+      }
+    }
+
+    // Update plugins
+    if (this.currentChart.options.plugins?.legend?.labels) {
+      this.currentChart.options.plugins.legend.labels.color = colors.textColor;
+    }
+
+    if (this.currentChart.options.plugins?.title) {
+      this.currentChart.options.plugins.title.color = colors.textColor;
+    }
+
+    this.currentChart.update();
+  }
+
+  // Watch for theme changes
+  watchThemeChanges() {
+    if (this.themeObserver) {
+      this.themeObserver.disconnect();
+    }
+
+    this.themeObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          this.updateTheme();
+        }
+      });
+    });
+
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+  }
+
   initialize() {
     if (!this.canvas) {
       console.error('Canvas element not found');
@@ -142,7 +266,7 @@ class ChartManager {
             title: {
               display: true,
               text: 'No Data Available',
-              color: 'var(--text-primary)',
+              color: this.getThemeTextColor(),
               font: { size: 16, weight: 'bold' }
             },
             tooltip: { enabled: false }
@@ -155,6 +279,7 @@ class ChartManager {
       });
       
       this.isDestroyed = false;
+      this.watchThemeChanges();
       console.log('Chart initialized with no data state');
     } catch (error) {
       console.error('Error initializing chart:', error);
@@ -162,6 +287,11 @@ class ChartManager {
   }
 
   safeDestroy() {
+    if (this.themeObserver) {
+      this.themeObserver.disconnect();
+      this.themeObserver = null;
+    }
+
     if (this.currentChart) {
       try {
         this.currentChart.destroy();
@@ -219,7 +349,9 @@ class ChartManager {
       });
 
       this.applyColors();
+      this.updateTheme(); // Apply theme colors
       this.currentChart.update();
+      this.watchThemeChanges(); // Start watching for theme changes
       
       console.log('✅ Chart updated successfully with type:', chartType);
       return true;
@@ -368,7 +500,7 @@ class ChartManager {
             title: {
               display: true,
               text: 'No Data Available',
-              color: 'var(--text-primary)',
+              color: this.getThemeTextColor(),
               font: { size: 16, weight: 'bold' },
               padding: { top: 10, bottom: 20 }
             },
@@ -382,6 +514,7 @@ class ChartManager {
       });
       
       this.isDestroyed = false;
+      this.watchThemeChanges();
     } catch (error) {
       console.error('Error showing no data:', error);
     }
@@ -415,6 +548,13 @@ class ChartManager {
     console.log('Chart manager destroyed');
   }
 }
+
+// Export functions for global use
+window.chartUtils = {
+  getCurrentTheme,
+  getChartColors,
+  ChartManager
+};
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ChartManager;
