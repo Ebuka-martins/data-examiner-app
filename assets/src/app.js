@@ -1,6 +1,5 @@
 // src/app.js — Data Examiner — COMPLETE FIXED VERSION
 
-// ===== Chart Toggle Manager Class - IMPROVED =====
 class ChartToggleManager {
     constructor() {
         this.chartSection = document.getElementById('chartSection');
@@ -12,25 +11,19 @@ class ChartToggleManager {
             this.initialize();
         } else {
             console.error('❌ Chart section or toggle button not found!');
-            console.log('chartSection:', this.chartSection);
-            console.log('toggleBtn:', this.toggleBtn);
         }
     }
     
     initialize() {
-        // Load saved state from localStorage
         const savedState = localStorage.getItem('chartSectionCollapsed');
         if (savedState !== null) {
             this.isCollapsed = savedState === 'true';
         } else {
-            // Default to not collapsed
             this.isCollapsed = false;
         }
         
-        // Apply initial state
         this.applyState();
         
-        // Add click event listener
         this.toggleBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -38,7 +31,6 @@ class ChartToggleManager {
             this.toggle();
         });
         
-        // Optional: Add keyboard support
         this.toggleBtn.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -46,7 +38,6 @@ class ChartToggleManager {
             }
         });
         
-        // Make sure chart section is visible initially
         this.chartSection.style.display = 'block';
         
         console.log('📊 Chart toggle manager ready, initial state:', this.isCollapsed ? 'collapsed' : 'expanded');
@@ -56,16 +47,13 @@ class ChartToggleManager {
         this.isCollapsed = !this.isCollapsed;
         this.applyState();
         
-        // Save state to localStorage
         localStorage.setItem('chartSectionCollapsed', this.isCollapsed);
         
-        // Dispatch event for other components
         const event = new CustomEvent('chartToggle', { 
             detail: { collapsed: this.isCollapsed } 
         });
         document.dispatchEvent(event);
         
-        // Show toast notification
         if (window.app && window.app.showToast) {
             window.app.showToast(
                 'info', 
@@ -89,14 +77,12 @@ class ChartToggleManager {
             this.toggleBtn.setAttribute('aria-label', 'Hide chart');
         }
         
-        // Trigger resize event for Chart.js to recalculate
         setTimeout(() => {
             window.dispatchEvent(new Event('resize'));
-        }, 350); // Wait for animation to complete
+        }, 350);
     }
 }
 
-// ===== Main Data Examiner App Class =====
 class DataExaminerApp {
   constructor() {
     this.api = new DataExaminerAPI();
@@ -108,7 +94,6 @@ class DataExaminerApp {
     this.currentTypingMessage = null;
     this.isSidebarOpen = false;
     
-    // Chart data storage for toggle functionality
     this.currentChartData = null;
     this.currentChartType = 'auto';
     this.currentChartTitle = 'Data Visualization';
@@ -156,11 +141,9 @@ class DataExaminerApp {
   initializeEventListeners() {
     console.log('🔌 Initializing event listeners...');
     
-    // Chart toggle event listener
     document.addEventListener('chartToggle', (e) => {
         console.log(`Chart ${e.detail.collapsed ? 'collapsed' : 'expanded'}`);
         
-        // If chart is expanded and we have chart data, ensure it's properly displayed
         if (!e.detail.collapsed && window.chartManager && this.currentChartData) {
             setTimeout(() => {
                 window.chartManager.updateChart(
@@ -168,11 +151,10 @@ class DataExaminerApp {
                     this.currentChartType || 'auto',
                     this.currentChartTitle || 'Data Visualization'
                 );
-            }, 300); // Wait for animation to complete
+            }, 300);
         }
     });
     
-    // Sidebar toggle functionality
     if (this.elements.menuToggle) {
       this.elements.menuToggle.addEventListener('click', () => {
         console.log('📱 Menu toggle clicked');
@@ -194,7 +176,6 @@ class DataExaminerApp {
       });
     }
 
-    // Close sidebar with Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.isSidebarOpen) {
         console.log('⎋ Escape pressed, closing sidebar');
@@ -202,7 +183,6 @@ class DataExaminerApp {
       }
     });
 
-    // Existing event listeners
     if (this.elements.newChat) {
       this.elements.newChat.addEventListener('click', () => this.resetAnalysis());
     }
@@ -420,7 +400,6 @@ class DataExaminerApp {
 
     console.log('📋 Analyzing pasted data...');
     
-    // Hide welcome screen and show messages
     if (this.elements.welcomeScreen && this.elements.messagesContainer) {
       if (this.elements.welcomeScreen.style.display !== 'none') {
         this.elements.welcomeScreen.style.display = 'none';
@@ -428,7 +407,6 @@ class DataExaminerApp {
       }
     }
 
-    // Add user message
     this.addMessage('user', 'Analyze this pasted data and create visualizations');
 
     this.showLoading(true);
@@ -446,13 +424,9 @@ class DataExaminerApp {
         conversationId: res.conversationId
       });
       
-      // Update session ID for conversation continuity
       this.currentSessionId = res.conversationId;
-      
-      // Handle the response with full AI summary and charts
       this.handleAnalysisResponse(res);
       
-      // Clear the paste area after successful analysis
       if (this.elements.dataInput) {
         this.elements.dataInput.value = '';
       }
@@ -485,7 +459,6 @@ class DataExaminerApp {
 
     console.log('📤 Sending message:', message.substring(0, 50) + '...');
 
-    // Hide welcome screen on first message
     if (this.elements.welcomeScreen && this.elements.messagesContainer) {
       if (this.elements.welcomeScreen.style.display !== 'none') {
         this.elements.welcomeScreen.style.display = 'none';
@@ -493,7 +466,6 @@ class DataExaminerApp {
       }
     }
 
-    // Display user message
     this.addMessage('user', message);
 
     input.value = '';
@@ -503,24 +475,19 @@ class DataExaminerApp {
     try {
       let response;
 
-      // Check if this is a follow-up question (we have an active session)
       if (this.currentSessionId) {
-        // This is a follow-up question about previous data
         console.log('🔄 Sending follow-up question...');
         response = await this.api.chatFollowup({
           question: message,
           conversationId: this.currentSessionId
         });
       } else {
-        // This is a new analysis request - need data
-        // Validation: require file OR pasted data for first message
         if (!this.currentFile && !(this.elements.dataInput?.value.trim())) {
           this.showToast('warning', 'Please upload data or paste data first, then ask questions');
           this.showLoading(false);
           return;
         }
 
-        // Case 1: File upload
         if (this.currentFile) {
           console.log('📁 Analyzing file...');
           response = await this.api.analyzeFile(
@@ -533,7 +500,6 @@ class DataExaminerApp {
             this.elements.fileIndicator.style.display = 'none';
           }
         } 
-        // Case 2: Pasted data
         else if (this.elements.dataInput?.value.trim()) {
           console.log('📋 Analyzing pasted data...');
           response = await this.api.analyzeText(
@@ -545,7 +511,6 @@ class DataExaminerApp {
             this.elements.dataInput.value = '';
           }
         } else {
-          // Case 3: Just a question without data (use follow-up logic)
           throw new Error('Please upload data or paste data first, then ask questions');
         }
       }
@@ -593,10 +558,8 @@ class DataExaminerApp {
       return;
     }
 
-    // Debug: Log chart data
     this.debugChartData(res);
 
-    // Create bot message with typing indicator
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message bot-message';
     messageDiv.innerHTML = `
@@ -615,10 +578,8 @@ class DataExaminerApp {
       this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
     }
     
-    // Parse the AI response
     const formattedResponse = this.createBeautifulResponseFromMarkdown(res.analysis);
     
-    // Display the response after a short delay (typing effect)
     setTimeout(() => {
       const contentElement = messageDiv.querySelector('.message-content');
       contentElement.classList.remove('typing');
@@ -628,24 +589,20 @@ class DataExaminerApp {
         this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
       }
 
-      // Store AI response in conversation context
       this.conversationContext.push({
         role: 'assistant',
         content: res.analysis,
         timestamp: new Date().toISOString()
       });
 
-      // Show chart if AI provided data
       if (res.chartData && window.chartManager) {
         console.log('🔄 Attempting to display chart with AI data');
         
-        // Show the chart section first
         if (this.elements.chartSection) {
           this.elements.chartSection.style.display = 'block';
           this.elements.chartSection.style.opacity = '1';
         }
         
-        // Try to display the chart
         const success = this.displayChartWithData(
           res.chartData,
           res.chartType || 'auto',
@@ -657,14 +614,12 @@ class DataExaminerApp {
           window.chartManager.showNoData();
         }
         
-        // Update chart type selector if needed
         if (res.chartType && this.elements.chartType) {
           this.elements.chartType.value = res.chartType;
         }
         
       } else if (window.chartManager) {
         console.log('📭 No chart data provided in AI response');
-        // Show "no data" state
         window.chartManager.showNoData();
         if (this.elements.chartSection) {
           this.elements.chartSection.style.display = 'block';
@@ -673,7 +628,7 @@ class DataExaminerApp {
       }
 
       this.saveToHistory(res);
-    }, 800); // Typing effect duration
+    }, 800);
   }
 
   debugChartData(data) {
@@ -688,7 +643,6 @@ class DataExaminerApp {
   }
 
   displayChartWithData(chartData, chartType = 'auto', chartTitle = 'Data Visualization') {
-    // Store current chart data for when chart is expanded
     this.currentChartData = chartData;
     this.currentChartType = chartType;
     this.currentChartTitle = chartTitle;
@@ -700,27 +654,22 @@ class DataExaminerApp {
 
     console.log('📈 Displaying chart:', { chartType, chartTitle });
 
-    // Validate chart data
     if (!chartData || !chartData.datasets || !Array.isArray(chartData.datasets) || chartData.datasets.length === 0) {
       console.error('❌ Invalid chart data');
       return false;
     }
 
-    // Ensure labels exist
     if (!chartData.labels || !Array.isArray(chartData.labels)) {
       console.warn('⚠️ No labels provided, generating default labels');
       chartData.labels = chartData.datasets[0].data.map((_, i) => `Item ${i + 1}`);
     }
 
     try {
-      // Only display if chart section is not collapsed
       if (!window.chartToggle || !window.chartToggle.isCollapsed) {
-        // Update the chart
         const success = window.chartManager.updateChart(chartData, chartType, chartTitle);
         
         if (success) {
           console.log('✅ Chart displayed successfully');
-          // Ensure chart section is visible
           if (this.elements.chartSection) {
             this.elements.chartSection.style.display = 'block';
             this.elements.chartSection.style.opacity = '1';
@@ -737,6 +686,26 @@ class DataExaminerApp {
     } catch (error) {
       console.error('❌ Error displaying chart:', error);
       return false;
+    }
+  }
+
+  updateChartType(type) {
+    if (window.chartManager) {
+        if (window.chartManager.currentChart && this.currentChartData) {
+            const success = window.chartManager.updateChart(
+                this.currentChartData,
+                type,
+                this.currentChartTitle || 'Data Visualization'
+            );
+            
+            if (!success) {
+                this.showToast('error', 'Failed to update chart type');
+            } else {
+                console.log('Chart type updated to:', type);
+            }
+        } else {
+            this.showToast('warning', 'No chart data available to change type');
+        }
     }
   }
 
@@ -878,7 +847,6 @@ class DataExaminerApp {
     
     let html = '<div class="ai-summary">';
     
-    // Header
     html += `
       <div class="summary-header">
         <div class="summary-icon">
@@ -888,7 +856,6 @@ class DataExaminerApp {
       </div>
     `;
     
-    // Overview
     html += `
       <div class="summary-section">
         <div class="section-header">
@@ -901,7 +868,6 @@ class DataExaminerApp {
       </div>
     `;
     
-    // Metrics
     if (metrics.length > 0) {
       html += `
         <div class="summary-section">
@@ -926,7 +892,6 @@ class DataExaminerApp {
       html += `</div></div>`;
     }
     
-    // Insights
     if (insights.length > 0) {
       html += `
         <div class="summary-section">
@@ -958,7 +923,6 @@ class DataExaminerApp {
       html += `</div></div>`;
     }
     
-    // Recommendations
     if (recommendations.length > 0) {
       html += `
         <div class="recommendation">
@@ -978,7 +942,6 @@ class DataExaminerApp {
       html += `</ul></div>`;
     }
     
-    // Key Findings
     if (keyFindings.length > 0) {
       html += `
         <div class="highlight-box">
@@ -1135,7 +1098,6 @@ class DataExaminerApp {
   showToast(type, message) {
     if (!this.elements.toastContainer) return;
     
-    // Remove existing toasts
     const existingToasts = this.elements.toastContainer.querySelectorAll('.toast');
     if (existingToasts.length > 3) {
       existingToasts[0].remove();
@@ -1150,13 +1112,11 @@ class DataExaminerApp {
     `;
     this.elements.toastContainer.appendChild(toast);
     
-    // Animate in
     setTimeout(() => {
       toast.style.transform = 'translateX(0)';
       toast.style.opacity = '1';
     }, 10);
     
-    // Remove after delay
     setTimeout(() => {
       if (toast.parentNode) {
         toast.style.transform = 'translateX(100%)';
@@ -1168,12 +1128,6 @@ class DataExaminerApp {
         }, 300);
       }
     }, 4000);
-  }
-
-  updateChartType(type) {
-    if (window.chartManager && window.chartManager.currentChart) {
-      window.chartManager.updateChartType(type);
-    }
   }
 
   exportChart() {
@@ -1261,7 +1215,6 @@ class DataExaminerApp {
     this.showToast('success', 'Sample sales data loaded. Click "Analyze" to get insights!');
   }
 
-  // TEST FUNCTION - Simple test chart
   testChart() {
     console.log('🧪 Testing chart system...');
     
@@ -1292,7 +1245,6 @@ class DataExaminerApp {
   }
 }
 
-// ===== Debug functions to test chart toggle =====
 window.testChartToggle = function() {
     if (window.chartToggle) {
         console.log('Testing chart toggle...');
@@ -1323,16 +1275,13 @@ window.forceChartVisible = function() {
     }
 };
 
-// Call this after 2 seconds to ensure everything is visible
 setTimeout(() => {
     window.forceChartVisible();
 }, 2000);
 
-// ===== Initialize the app =====
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🏁 DOM loaded, initializing app...');
   
-  // Clear old service worker caches
   if ('serviceWorker' in navigator) {
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -1344,24 +1293,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   try {
-    // Make sure chart section is visible initially
     const chartSection = document.getElementById('chartSection');
     if (chartSection) {
       chartSection.style.display = 'block';
     }
     
-    // Make sure welcome screen is visible
     const welcomeScreen = document.getElementById('welcomeScreen');
     if (welcomeScreen) {
       welcomeScreen.style.display = 'flex';
     }
     
-    // Initialize chart toggle manager first
     window.chartToggle = new ChartToggleManager();
     
     window.app = new DataExaminerApp();
     
-    // Initialize chart manager
     const chartCanvas = document.getElementById('dataChart');
     if (chartCanvas) {
       const chartManager = new ChartManager(chartCanvas);
@@ -1369,7 +1314,6 @@ document.addEventListener('DOMContentLoaded', () => {
       chartManager.initialize();
       console.log('📊 Chart manager initialized');
       
-      // Show initial test chart after a delay
       setTimeout(() => {
         console.log('🔄 Showing initial test chart');
         const testData = {
@@ -1386,19 +1330,16 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('❌ Chart canvas not found!');
     }
     
-    // Initialize history display
     if (window.app && typeof window.app.renderHistory === 'function') {
       window.app.renderHistory();
     }
     
-    // Add test function to window for debugging
     window.testChart = () => {
       if (window.app && typeof window.app.testChart === 'function') {
         window.app.testChart();
       }
     };
     
-    // Add a manual sidebar toggle function for debugging
     window.toggleSidebar = (show) => {
       if (window.app && typeof window.app.toggleSidebar === 'function') {
         window.app.toggleSidebar(show);
@@ -1412,7 +1353,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('   - forceChartVisible() - Reset visibility');
     console.log('   - toggleSidebar() - Toggle sidebar');
     
-    // Log the state
     console.log('📊 Chart toggle state:', window.chartToggle ? window.chartToggle.isCollapsed : 'not initialized');
     
   } catch (error) {

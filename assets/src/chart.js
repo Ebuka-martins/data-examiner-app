@@ -1,11 +1,11 @@
-// src/chart.js - Data Examiner Visualization Manager
-// Compatible with Chart.js v4+, includes time scale support and dynamic titles
+// src/chart.js - Data Examiner Visualization Manager - COMPLETE FIXED VERSION
 
 class ChartManager {
   constructor(canvasElement) {
     this.canvas = canvasElement;
     this.currentChart = null;
     this.chartData = null;
+    this.isDestroyed = false;
 
     this.defaultOptions = {
       responsive: true,
@@ -33,6 +33,8 @@ class ChartManager {
               if (label) label += ': ';
               if (context.parsed.y !== null) {
                 label += context.parsed.y.toLocaleString();
+              } else if (context.parsed !== null) {
+                label += context.parsed.toLocaleString();
               }
               return label;
             }
@@ -48,6 +50,7 @@ class ChartManager {
       },
       scales: {
         x: {
+          type: 'category',
           grid: { 
             color: 'var(--border-color)', 
             drawBorder: false 
@@ -77,25 +80,22 @@ class ChartManager {
       },
       interaction: { intersect: false, mode: 'index' },
       animation: { 
-        duration: 1000, 
-        easing: 'easeOutQuart',
-        onComplete: () => {
-          console.log('Chart animation complete');
-        }
+        duration: 800, 
+        easing: 'easeOutQuart'
       },
       hover: { animationDuration: 0 }
     };
 
     this.colorPalettes = {
       primary: [
-        'rgba(16, 163, 127, 0.8)',   // Primary green
-        'rgba(102, 126, 234, 0.8)',  // Primary blue
-        'rgba(255, 107, 107, 0.8)',  // Red
-        'rgba(255, 159, 64, 0.8)',   // Orange
-        'rgba(75, 192, 192, 0.8)',   // Teal
-        'rgba(153, 102, 255, 0.8)',  // Purple
-        'rgba(255, 205, 86, 0.8)',   // Yellow
-        'rgba(54, 162, 235, 0.8)'    // Light blue
+        'rgba(16, 163, 127, 0.8)',
+        'rgba(102, 126, 234, 0.8)',
+        'rgba(255, 107, 107, 0.8)',
+        'rgba(255, 159, 64, 0.8)',
+        'rgba(75, 192, 192, 0.8)',
+        'rgba(153, 102, 255, 0.8)',
+        'rgba(255, 205, 86, 0.8)',
+        'rgba(54, 162, 235, 0.8)'
       ],
       light: [
         'rgba(16, 163, 127, 0.2)',
@@ -116,33 +116,67 @@ class ChartManager {
       return;
     }
 
+    this.safeDestroy();
+    
     const ctx = this.canvas.getContext('2d');
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    this.currentChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['No Data'],
-        datasets: [{
-          label: 'No Data',
-          data: [0],
-          backgroundColor: 'rgba(229, 229, 231, 0.5)',
-          borderColor: 'rgba(229, 229, 231, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        ...this.defaultOptions,
-        plugins: { 
-          ...this.defaultOptions.plugins, 
-          tooltip: { enabled: false } 
+    try {
+      this.currentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['No Data'],
+          datasets: [{
+            label: 'No Data',
+            data: [1],
+            backgroundColor: 'rgba(229, 229, 231, 0.5)',
+            borderColor: 'rgba(229, 229, 231, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { 
+            legend: { display: false },
+            title: {
+              display: true,
+              text: 'No Data Available',
+              color: 'var(--text-primary)',
+              font: { size: 16, weight: 'bold' }
+            },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: { display: false },
+            y: { display: false }
+          }
         }
+      });
+      
+      this.isDestroyed = false;
+      console.log('Chart initialized with no data state');
+    } catch (error) {
+      console.error('Error initializing chart:', error);
+    }
+  }
+
+  safeDestroy() {
+    if (this.currentChart) {
+      try {
+        this.currentChart.destroy();
+      } catch (error) {
+        console.warn('Error destroying chart:', error);
       }
-    });
+      this.currentChart = null;
+    }
     
-    // Add chart ID for debugging
-    this.currentChart.id = `chart-initial-${Date.now()}`;
+    if (this.canvas) {
+      const ctx = this.canvas.getContext('2d');
+      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
     
-    console.log('Chart initialized with no data state, ID:', this.currentChart.id);
+    this.isDestroyed = true;
   }
 
   updateChart(data, type = 'auto', title = 'Data Visualization') {
@@ -151,67 +185,45 @@ class ChartManager {
       return false;
     }
 
-    console.log('🔄 Updating chart:', { 
-      dataType: typeof data, 
-      chartType: type, 
-      title 
-    });
+    console.log('🔄 Updating chart:', { dataType: typeof data, chartType: type, title });
 
-    // Destroy previous chart if it exists
-    if (this.currentChart) {
-      console.log('Destroying previous chart with ID:', this.currentChart.id);
-      try {
-        this.currentChart.destroy();
-        this.currentChart = null;
-        // Clear the canvas context
-        const ctx = this.canvas.getContext('2d');
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      } catch (error) {
-        console.warn('Error destroying previous chart:', error);
-        // If destruction fails, try to clear and recreate canvas
-        const parent = this.canvas.parentNode;
-        const newCanvas = this.canvas.cloneNode();
-        parent.removeChild(this.canvas);
-        parent.appendChild(newCanvas);
-        this.canvas = newCanvas;
-      }
-    }
-
-    if (!data || !data.datasets || data.datasets.length === 0) {
+    if (!data || !data.datasets || !Array.isArray(data.datasets) || data.datasets.length === 0) {
       console.warn('No valid chart data provided');
       this.showNoData();
       return false;
     }
 
-    this.chartData = data;
-    const chartType = type === 'auto' ? this.determineChartType(data) : type;
+    if (!data.labels || !Array.isArray(data.labels) || data.labels.length === 0) {
+      console.warn('No labels provided, generating default labels');
+      data.labels = data.datasets[0].data.map((_, i) => `Item ${i + 1}`);
+    }
 
-    console.log('Chart type determined:', chartType);
+    this.chartData = JSON.parse(JSON.stringify(data));
     
-    const ctx = this.canvas.getContext('2d');
-    const preparedData = this.prepareChartData(data, chartType);
-    const options = this.getOptions(chartType);
+    this.safeDestroy();
 
-    // Set dynamic title from AI or fallback
+    const chartType = type === 'auto' ? this.determineChartType(data) : type;
+    
+    const preparedData = this.prepareChartData(data, chartType);
+    
+    const options = this.getOptions(chartType);
     options.plugins.title.text = title;
 
-    console.log('Creating new chart with data:', preparedData);
-    
     try {
+      const ctx = this.canvas.getContext('2d');
+      
       this.currentChart = new Chart(ctx, {
         type: chartType,
         data: preparedData,
-        options
+        options: options
       });
 
-      // Add chart ID for debugging
-      this.currentChart.id = `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
       this.applyColors();
       this.currentChart.update();
       
-      console.log('✅ Chart updated successfully with ID:', this.currentChart.id);
+      console.log('✅ Chart updated successfully with type:', chartType);
       return true;
+      
     } catch (error) {
       console.error('❌ Error creating chart:', error);
       this.showNoData();
@@ -222,11 +234,11 @@ class ChartManager {
   updateChartType(type) {
     if (!this.currentChart || !this.chartData) {
       console.warn('No chart or data to update type');
-      return;
+      return false;
     }
     
     console.log('Updating chart type to:', type);
-    this.updateChart(this.chartData, type, this.currentChart.options.plugins.title.text);
+    return this.updateChart(this.chartData, type, this.currentChart.options.plugins.title.text);
   }
 
   determineChartType(data) {
@@ -236,246 +248,143 @@ class ChartManager {
     const labels = data.labels || [];
     const dataPoints = dataset.data || [];
 
-    // If data looks like percentages (sum close to 100) and small number of categories
-    if (labels.length <= 6) {
-      const sum = dataPoints.reduce((a, b) => a + b, 0);
-      if (Math.abs(sum - 100) < 5) return 'pie';
+    if (labels.length <= 7 && labels.length > 0) {
+      const numericData = dataPoints.filter(v => typeof v === 'number');
+      if (numericData.length > 0) {
+        const sum = numericData.reduce((a, b) => a + b, 0);
+        if (Math.abs(sum - 100) < 10) return 'pie';
+      }
+      return 'pie';
     }
 
-    // If we have date-like labels, use line chart
-    if (labels.length >= 5 && this.isDateData(labels)) {
-      return 'line';
-    }
-
-    // Default to bar for categorical data
     return 'bar';
   }
 
   prepareChartData(data, chartType) {
-    console.log('Preparing chart data for type:', chartType);
-    
-    // Validate data structure
-    if (!data.labels || !Array.isArray(data.labels)) {
-      data.labels = data.labels || Array.from({ length: data.datasets?.[0]?.data?.length || 0 }, (_, i) => `Item ${i + 1}`);
-    }
-
     const prepared = {
-      labels: data.labels,
-      datasets: data.datasets.map((ds, i) => {
-        const base = {
-          label: ds.label || `Dataset ${i + 1}`,
-          data: ds.data || [],
-          borderWidth: 2,
-          tension: 0.1
-        };
-
-        switch (chartType) {
-          case 'line': 
-            return { 
-              ...base, 
-              fill: true, 
-              pointRadius: 4, 
-              pointHoverRadius: 6,
-              borderColor: ds.borderColor,
-              backgroundColor: ds.backgroundColor || 'rgba(16, 163, 127, 0.1)'
-            };
-          case 'bar':  
-            return { 
-              ...base, 
-              borderRadius: 4, 
-              borderSkipped: false,
-              backgroundColor: ds.backgroundColor,
-              borderColor: ds.borderColor
-            };
-          case 'pie':
-          case 'doughnut':
-            return { 
-              ...base, 
-              borderWidth: 1, 
-              hoverOffset: 15,
-              backgroundColor: ds.backgroundColor,
-              borderColor: ds.borderColor || '#ffffff'
-            };
-          default: 
-            return base;
-        }
-      })
+      labels: [...data.labels],
+      datasets: data.datasets.map(ds => ({
+        label: ds.label || 'Dataset',
+        data: [...ds.data],
+        borderWidth: 2,
+        tension: 0.1
+      }))
     };
 
-    // For pie/doughnut charts, only show first dataset
-    if ((chartType === 'pie' || chartType === 'doughnut') && prepared.datasets.length > 1) {
-      console.warn('Pie/Doughnut chart: showing only first dataset');
-      prepared.datasets = [prepared.datasets[0]];
+    if (chartType === 'pie' || chartType === 'doughnut') {
+      if (prepared.datasets.length > 1) {
+        console.log('Pie/Doughnut chart: using only first dataset');
+        prepared.datasets = [prepared.datasets[0]];
+      }
+      
+      prepared.datasets[0].data = prepared.datasets[0].data.map(v => 
+        typeof v === 'number' ? v : parseFloat(v) || 0
+      );
     }
-
-    console.log('Prepared data structure:', {
-      labelsCount: prepared.labels.length,
-      datasetsCount: prepared.datasets.length,
-      firstDatasetDataLength: prepared.datasets[0]?.data?.length
-    });
 
     return prepared;
   }
 
   getOptions(chartType) {
-    const opts = JSON.parse(JSON.stringify(this.defaultOptions));
+    const options = JSON.parse(JSON.stringify(this.defaultOptions));
 
-    switch (chartType) {
-      case 'line':
-        opts.scales.x = {
-          ...opts.scales.x,
-          type: this.isDateData(this.chartData?.labels) ? 'time' : 'category',
-          time: this.isDateData(this.chartData?.labels)
-            ? { 
-                unit: 'day', 
-                tooltipFormat: 'MMM d, yyyy',
-                displayFormats: {
-                  day: 'MMM d',
-                  week: 'MMM d',
-                  month: 'MMM yyyy'
-                }
-              }
-            : undefined
-        };
-        break;
-
-      case 'bar':
-        opts.indexAxis = 'x';
-        opts.scales.x.stacked = this.chartData?.datasets?.length > 1;
-        opts.scales.y.stacked = this.chartData?.datasets?.length > 1;
-        break;
-
-      case 'pie':
-      case 'doughnut':
-        opts.plugins.legend.position = 'right';
-        opts.cutout = chartType === 'doughnut' ? '50%' : 0;
-        opts.plugins.tooltip.callbacks = {
-          label: (ctx) => {
-            const label = ctx.label || '';
-            const val = ctx.raw || 0;
-            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-            const pct = Math.round((val / total) * 100);
-            return `${label}: ${val.toLocaleString()} (${pct}%)`;
-          }
-        };
-        break;
+    if (chartType === 'pie' || chartType === 'doughnut') {
+      options.scales = {};
+      options.cutout = chartType === 'doughnut' ? '50%' : 0;
+      options.plugins.legend.position = 'right';
+      options.plugins.tooltip.callbacks = {
+        label: (ctx) => {
+          const label = ctx.label || '';
+          const value = ctx.raw || 0;
+          const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+          return `${label}: ${value.toLocaleString()} (${percentage}%)`;
+        }
+      };
     }
 
-    return opts;
-  }
-
-  isDateData(labels) {
-    if (!labels?.length) return false;
-    const patterns = [
-      /^\d{4}-\d{2}-\d{2}$/,
-      /^\d{4}-\d{2}-\d{2}T/,
-      /^\d{2}\/\d{2}\/\d{4}$/,
-      /^\d{2}\/\d{2}\/\d{2}$/,
-      /^[A-Za-z]{3} \d{1,2}$/,
-      /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i
-    ];
-    return labels.some(l => patterns.some(p => p.test(String(l))));
+    return options;
   }
 
   applyColors() {
     if (!this.currentChart?.data?.datasets) return;
     
+    const chartType = this.currentChart.config.type;
+    
     this.currentChart.data.datasets.forEach((ds, i) => {
       const idx = i % this.colorPalettes.primary.length;
       
-      // Only apply default colors if not already set
-      if (!ds.backgroundColor || ds.backgroundColor.length === 0) {
-        if (this.currentChart.config.type === 'pie' || 
-            this.currentChart.config.type === 'doughnut') {
-          // For pie/doughnut, generate array of colors for each data point
-          const dataLength = ds.data?.length || 0;
-          ds.backgroundColor = Array.from({ length: dataLength }, (_, j) => 
-            this.colorPalettes.primary[(idx + j) % this.colorPalettes.primary.length]
-          );
-        } else {
-          // For line/bar, single color for dataset
+      if (chartType === 'pie' || chartType === 'doughnut') {
+        const dataLength = ds.data?.length || 0;
+        ds.backgroundColor = Array.from({ length: dataLength }, (_, j) => 
+          this.colorPalettes.primary[(idx + j) % this.colorPalettes.primary.length]
+        );
+        ds.borderColor = '#ffffff';
+        ds.borderWidth = 2;
+      } else {
+        if (!ds.backgroundColor) {
           ds.backgroundColor = this.colorPalettes.light[idx];
         }
-      }
-      
-      if (!ds.borderColor) {
-        if (this.currentChart.config.type === 'pie' || 
-            this.currentChart.config.type === 'doughnut') {
-          // For pie/doughnut, border is usually white
-          ds.borderColor = '#ffffff';
-        } else {
-          // For line/bar, use primary color
+        if (!ds.borderColor) {
           ds.borderColor = this.colorPalettes.primary[idx];
         }
-      }
-      
-      if (!ds.pointBackgroundColor) {
-        ds.pointBackgroundColor = this.colorPalettes.primary[idx];
-      }
-      
-      if (!ds.pointBorderColor) {
-        ds.pointBorderColor = '#ffffff';
+        if (!ds.pointBackgroundColor) {
+          ds.pointBackgroundColor = this.colorPalettes.primary[idx];
+        }
+        if (!ds.pointBorderColor) {
+          ds.pointBorderColor = '#ffffff';
+        }
       }
     });
     
-    console.log('Applied colors to chart');
+    this.currentChart.update();
   }
 
   showNoData() {
+    this.safeDestroy();
+    
     if (!this.canvas) return;
     
-    // Force destroy all existing charts on this canvas
-    if (this.currentChart) {
-      try {
-        this.currentChart.destroy();
-      } catch (error) {
-        console.warn('Error destroying chart:', error);
-      }
-      this.currentChart = null;
-    }
-    
-    // Clear canvas
-    const ctx = this.canvas.getContext('2d');
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    
-    console.log('Showing "No Data" chart state');
-    
-    // Create new chart
-    this.currentChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['No Data Available'],
-        datasets: [{
-          label: 'No Data',
-          data: [1],
-          backgroundColor: 'rgba(229, 229, 231, 0.5)',
-          borderColor: 'rgba(229, 229, 231, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          title: {
-            display: true,
-            text: 'No Data Available',
-            color: 'var(--text-primary)',
-            font: { size: 16, weight: 'bold' },
-            padding: { top: 10, bottom: 20 }
-          },
-          tooltip: { enabled: false }
+    try {
+      const ctx = this.canvas.getContext('2d');
+      
+      this.currentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['No Data'],
+          datasets: [{
+            label: 'No Data',
+            data: [1],
+            backgroundColor: 'rgba(229, 229, 231, 0.5)',
+            borderColor: 'rgba(229, 229, 231, 1)',
+            borderWidth: 1
+          }]
         },
-        scales: {
-          x: { display: false },
-          y: { display: false }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: true,
+              text: 'No Data Available',
+              color: 'var(--text-primary)',
+              font: { size: 16, weight: 'bold' },
+              padding: { top: 10, bottom: 20 }
+            },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: { display: false },
+            y: { display: false }
+          }
         }
-      }
-    });
-    
-    // Add chart ID for debugging
-    this.currentChart.id = `chart-nodata-${Date.now()}`;
+      });
+      
+      this.isDestroyed = false;
+    } catch (error) {
+      console.error('Error showing no data:', error);
+    }
   }
 
   exportChart(format = 'png', quality = 1.0) {
@@ -501,28 +410,12 @@ class ChartManager {
   }
 
   destroy() {
-    if (this.currentChart) {
-      console.log('Destroying chart with ID:', this.currentChart.id);
-      try {
-        this.currentChart.destroy();
-      } catch (error) {
-        console.warn('Error destroying chart:', error);
-      }
-      this.currentChart = null;
-    }
-    
-    // Clear canvas
-    if (this.canvas) {
-      const ctx = this.canvas.getContext('2d');
-      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-    
+    this.safeDestroy();
     this.chartData = null;
     console.log('Chart manager destroyed');
   }
 }
 
-// For Node.js compatibility (optional)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ChartManager;
 }
