@@ -40,7 +40,7 @@
         <!-- Sidebar Toggle Overlay -->
         <div class="overlay" id="sidebarOverlay"></div>
         
-        <!-- Sidebar -->
+        <!-- Sidebar - UPDATED WITH SCROLLABLE CONTENT -->
         <aside class="sidebar" id="sidebar" aria-label="Main navigation">
             <div class="sidebar-header">
                 <div class="logo-container">
@@ -54,47 +54,50 @@
                     <i class="fas fa-plus" aria-hidden="true"></i> New Analysis
                 </button>
             </div>
-           
-            <!-- File Upload Section -->
-            <section class="sidebar-section" aria-labelledby="upload-heading">
-                <h3 id="upload-heading"><i class="fas fa-file-upload" aria-hidden="true"></i> Upload Files</h3>
-                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.json,.txt" style="display: none;" aria-label="File upload">
-                <label for="fileInput" class="upload-btn" id="uploadBtn" role="button" tabindex="0">
-                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
-                    <span>Choose File</span>
-                </label>
-                <div class="file-info" id="fileInfo">
-                    <p>Supported: CSV, Excel, JSON, Text</p>
-                    <p>Max size: 10MB</p>
-                </div>
-            </section>
             
-            <!-- Paste Data Section -->
-            <section class="sidebar-section" aria-labelledby="paste-heading">
-                <h3 id="paste-heading"><i class="fas fa-paste" aria-hidden="true"></i> Paste Data</h3>
-                <div class="paste-container">
-                    <textarea id="dataInput"
-                              placeholder="Paste CSV, JSON, or any data here..."
-                              aria-label="Data input area"
-                              rows="4"></textarea>
-                    <button id="analyzePaste" class="analyze-btn" aria-label="Analyze pasted data">
-                        <i class="fas fa-magic" aria-hidden="true"></i> Analyze
-                    </button>
-                </div>
-            </section>
-            
-            <!-- Recent Analyses -->
-            <section class="sidebar-section history-section" aria-labelledby="history-heading">
-                <h3 id="history-heading"><i class="fas fa-history" aria-hidden="true"></i> Recent Analyses</h3>
-                <div class="history-list" id="analysisHistory" role="list">
-                    <div class="history-empty" role="listitem">
-                        <i class="fas fa-inbox" aria-hidden="true"></i>
-                        <p>No analyses yet</p>
+            <!-- NEW: Scrollable content wrapper -->
+            <div class="sidebar-content">
+                <!-- File Upload Section -->
+                <section class="sidebar-section" aria-labelledby="upload-heading">
+                    <h3 id="upload-heading"><i class="fas fa-file-upload" aria-hidden="true"></i> Upload Files</h3>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.json,.txt" style="display: none;" aria-label="File upload">
+                    <label for="fileInput" class="upload-btn" id="uploadBtn" role="button" tabindex="0">
+                        <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+                        <span>Choose File</span>
+                    </label>
+                    <div class="file-info" id="fileInfo">
+                        <p>Supported: CSV, Excel, JSON, Text</p>
+                        <p>Max size: 10MB</p>
                     </div>
-                </div>
-            </section>
+                </section>
+                
+                <!-- Paste Data Section -->
+                <section class="sidebar-section" aria-labelledby="paste-heading">
+                    <h3 id="paste-heading"><i class="fas fa-paste" aria-hidden="true"></i> Paste Data</h3>
+                    <div class="paste-container">
+                        <textarea id="dataInput"
+                                  placeholder="Paste CSV, JSON, or any data here..."
+                                  aria-label="Data input area"
+                                  rows="4"></textarea>
+                        <button id="analyzePaste" class="analyze-btn" aria-label="Analyze pasted data">
+                            <i class="fas fa-magic" aria-hidden="true"></i> Analyze
+                        </button>
+                    </div>
+                </section>
+                
+                <!-- Recent Analyses -->
+                <section class="sidebar-section history-section" aria-labelledby="history-heading">
+                    <h3 id="history-heading"><i class="fas fa-history" aria-hidden="true"></i> Recent Analyses</h3>
+                    <div class="history-list" id="analysisHistory" role="list">
+                        <div class="history-empty" role="listitem">
+                            <i class="fas fa-inbox" aria-hidden="true"></i>
+                            <p>No analyses yet</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
             
-            <!-- Status & Info -->
+            <!-- Status & Info - Stays at bottom -->
             <footer class="sidebar-footer">
                 <div class="status-indicator" id="statusIndicator">
                     <span class="status-dot online" aria-hidden="true"></span>

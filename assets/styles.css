@@ -1,4 +1,4 @@
-/* styles.css - Ultra Professional Data Examiner Styling - COMPLETE WITH SCROLLABLE CHART */
+/* styles.css - Ultra Professional Data Examiner Styling - COMPLETE WITH SCROLLABLE CHART AND SIDEBAR */
 
 /* ===== CSS Variables & Theme System ===== */
 :root {
@@ -182,7 +182,7 @@ body {
     position: relative;
 }
 
-/* ===== Sidebar Styling ===== */
+/* ===== Sidebar Styling - UPDATED WITH SCROLLING ===== */
 .sidebar {
     width: var(--sidebar-width);
     background: var(--bg-sidebar);
@@ -193,11 +193,14 @@ body {
     position: relative;
     z-index: var(--z-sidebar);
     box-shadow: var(--shadow-lg);
+    height: 100vh; /* Full viewport height */
+    overflow: hidden; /* Hide overflow on the sidebar itself */
 }
 
 .sidebar-header {
     padding: var(--space-6);
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .logo-container {
@@ -289,6 +292,36 @@ body {
 
 .new-analysis-btn:active {
     transform: translateY(0);
+}
+
+/* Sidebar Content Wrapper - NEW */
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Hide horizontal scroll */
+    padding: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-muted) var(--bg-tertiary);
+}
+
+/* Custom scrollbar for sidebar content */
+.sidebar-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: var(--radius-full);
+    transition: background var(--transition-fast);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
 .sidebar-section {
@@ -397,8 +430,7 @@ body {
 }
 
 .history-section {
-    flex: 1;
-    overflow-y: auto;
+    border-bottom: none; /* Remove border since it's the last section */
 }
 
 .history-list {
@@ -479,6 +511,8 @@ body {
     align-items: center;
     font-size: var(--font-size-xs);
     color: var(--text-muted);
+    flex-shrink: 0; /* Prevent footer from shrinking */
+    background: var(--bg-sidebar); /* Ensure footer has background */
 }
 
 .status-indicator {
