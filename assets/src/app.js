@@ -1,4 +1,4 @@
-// src/app.js — Data Examiner — COMPLETE FIXED VERSION
+// src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH DELETE FUNCTIONALITY
 
 class ChartToggleManager {
     constructor() {
@@ -115,12 +115,12 @@ class DataExaminerApp {
       'dataChart', 'chartType', 'exportChart', 'messageInput', 'attachBtn',
       'sendBtn', 'fileIndicator', 'fileName', 'clearFile', 'quickUpload',
       'quickPaste', 'quickSample', 'loadingOverlay', 'installBtn',
-      'themeToggle', 'toastContainer', 'testChartBtn'
+      'themeToggle', 'toastContainer', 'testChartBtn', 'clearAllHistory'
     ];
 
     ids.forEach(id => {
       this.elements[id] = document.getElementById(id);
-      if (!this.elements[id] && id !== 'testChartBtn') {
+      if (!this.elements[id] && id !== 'testChartBtn' && id !== 'clearAllHistory') {
         console.warn(`⚠️ Element ${id} not found`);
       }
     });
@@ -296,6 +296,11 @@ class DataExaminerApp {
         this.testChart();
       });
       this.elements.testChartBtn.style.display = 'flex';
+    }
+
+    // Clear all history button
+    if (this.elements.clearAllHistory) {
+      this.elements.clearAllHistory.addEventListener('click', () => this.clearAllHistory());
     }
 
     window.addEventListener('online', () => this.updateOnlineStatus(true));
@@ -1010,23 +1015,29 @@ class DataExaminerApp {
       .replace(/\n/g, '<br>');
   }
 
+  // UPDATED saveToHistory method with better preview formatting
   saveToHistory(res) {
     const entry = {
       timestamp: new Date().toISOString(),
-      preview: res.analysis ? (res.analysis.substring(0, 120) + '...') : 'No analysis',
+      preview: res.analysis ? (res.analysis.replace(/#/g, '').replace(/\*\*/g, '').substring(0, 120) + '...') : 'No analysis',
       full: res.analysis,
       chartData: res.chartData,
       sessionId: this.currentSessionId,
       conversationContext: [...this.conversationContext]
     };
+    
     this.analysisHistory.unshift(entry);
-    localStorage.setItem(
-      'analysisHistory',
-      JSON.stringify(this.analysisHistory.slice(0, 30))
-    );
+    
+    // Keep only last 30 items
+    if (this.analysisHistory.length > 30) {
+      this.analysisHistory = this.analysisHistory.slice(0, 30);
+    }
+    
+    localStorage.setItem('analysisHistory', JSON.stringify(this.analysisHistory));
     this.renderHistory();
   }
 
+  // UPDATED renderHistory method with delete buttons
   renderHistory() {
     const historyList = this.elements.analysisHistory;
     if (!historyList) return;
@@ -1043,19 +1054,75 @@ class DataExaminerApp {
       return;
     }
 
-    this.analysisHistory.forEach(entry => {
+    this.analysisHistory.forEach((entry, index) => {
       const historyItem = document.createElement('div');
       historyItem.className = 'history-item';
+      historyItem.setAttribute('data-index', index);
+      
+      // Format date nicely
+      const date = new Date(entry.timestamp);
+      const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      // Truncate preview if too long
+      const preview = entry.preview.length > 60 ? entry.preview.substring(0, 60) + '...' : entry.preview;
+      
       historyItem.innerHTML = `
-        <div class="history-title">${entry.preview}</div>
-        <div class="history-date">${new Date(entry.timestamp).toLocaleDateString()}</div>
-        ${entry.chartData ? '<div class="history-has-chart"><i class="fas fa-chart-bar"></i></div>' : ''}
+        <div class="history-item-content" onclick="window.app.loadHistoryItem(${index})">
+          <div class="history-title">${preview}</div>
+          <div class="history-date">${formattedDate}</div>
+          ${entry.chartData ? '<div class="history-has-chart"><i class="fas fa-chart-bar"></i></div>' : ''}
+        </div>
+        <button class="history-delete-btn" onclick="window.app.deleteHistoryItem(${index}, event)" title="Delete this analysis">
+          <i class="fas fa-trash-alt"></i>
+        </button>
       `;
-      historyItem.addEventListener('click', () => {
-        this.loadFromHistory(entry);
-      });
+      
       historyList.appendChild(historyItem);
     });
+  }
+
+  // NEW: Delete a specific history item
+  deleteHistoryItem(index, event) {
+    // Stop event propagation to prevent triggering the history item click
+    event.stopPropagation();
+    
+    console.log(`🗑️ Deleting history item at index: ${index}`);
+    
+    // Remove the item from the array
+    this.analysisHistory.splice(index, 1);
+    
+    // Update localStorage
+    localStorage.setItem('analysisHistory', JSON.stringify(this.analysisHistory));
+    
+    // Re-render the history list
+    this.renderHistory();
+    
+    // Show confirmation toast
+    this.showToast('success', 'Analysis removed from history');
+  }
+
+  // NEW: Load a history item by index
+  loadHistoryItem(index) {
+    const entry = this.analysisHistory[index];
+    if (entry) {
+      this.loadFromHistory(entry);
+    }
+  }
+
+  // NEW: Clear all history
+  clearAllHistory() {
+    if (this.analysisHistory.length === 0) {
+      this.showToast('info', 'No history to clear');
+      return;
+    }
+    
+    if (confirm('Are you sure you want to clear all analysis history?')) {
+      console.log('🗑️ Clearing all history');
+      this.analysisHistory = [];
+      localStorage.setItem('analysisHistory', JSON.stringify([]));
+      this.renderHistory();
+      this.showToast('success', 'All history cleared');
+    }
   }
 
   loadFromHistory(entry) {

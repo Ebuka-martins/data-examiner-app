@@ -40,7 +40,7 @@
         <!-- Sidebar Toggle Overlay -->
         <div class="overlay" id="sidebarOverlay"></div>
         
-        <!-- Sidebar - UPDATED WITH SCROLLABLE CONTENT -->
+        <!-- Sidebar - UPDATED WITH SCROLLABLE CONTENT AND DELETE BUTTONS -->
         <aside class="sidebar" id="sidebar" aria-label="Main navigation">
             <div class="sidebar-header">
                 <div class="logo-container">
@@ -55,7 +55,7 @@
                 </button>
             </div>
             
-            <!-- NEW: Scrollable content wrapper -->
+            <!-- Scrollable content wrapper -->
             <div class="sidebar-content">
                 <!-- File Upload Section -->
                 <section class="sidebar-section" aria-labelledby="upload-heading">
@@ -85,9 +85,14 @@
                     </div>
                 </section>
                 
-                <!-- Recent Analyses -->
+                <!-- Recent Analyses with Clear All Button -->
                 <section class="sidebar-section history-section" aria-labelledby="history-heading">
-                    <h3 id="history-heading"><i class="fas fa-history" aria-hidden="true"></i> Recent Analyses</h3>
+                    <div class="history-header">
+                        <h3 id="history-heading"><i class="fas fa-history" aria-hidden="true"></i> Recent Analyses</h3>
+                        <button id="clearAllHistory" class="clear-history-btn" title="Clear all history">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
                     <div class="history-list" id="analysisHistory" role="list">
                         <div class="history-empty" role="listitem">
                             <i class="fas fa-inbox" aria-hidden="true"></i>
