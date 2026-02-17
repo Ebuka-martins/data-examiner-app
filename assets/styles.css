@@ -2242,3 +2242,105 @@ body {
         max-width: 120px;
     }
 }
+/* ===== Delete Animation ===== */
+@keyframes slideOut {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+}
+
+.history-item.removing {
+    animation: slideOut 0.2s ease forwards;
+    pointer-events: none;
+}
+
+/* Ensure delete button is properly positioned */
+.history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border-left: 3px solid transparent;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: var(--space-2);
+}
+
+.history-item-content {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.history-delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-size-base);
+    padding: var(--space-2);
+    margin-left: var(--space-2);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.history-delete-btn:hover {
+    background: var(--bg-hover);
+    color: var(--accent-color);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.history-delete-btn i {
+    pointer-events: none;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .history-delete-btn:hover {
+    background: var(--bg-tertiary);
+    color: #ff6b6b;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+.clear-history-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-size-base);
+    padding: var(--space-2);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+}
+
+.clear-history-btn:hover {
+    background: var(--bg-hover);
+    color: var(--accent-color);
+    opacity: 1;
+    transform: scale(1.1);
+}

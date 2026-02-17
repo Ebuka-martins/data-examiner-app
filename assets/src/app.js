@@ -1,4 +1,4 @@
-// src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH DELETE FUNCTIONALITY
+// src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH WORKING DELETE FUNCTIONALITY
 
 class ChartToggleManager {
     constructor() {
@@ -1037,7 +1037,7 @@ class DataExaminerApp {
     this.renderHistory();
   }
 
-  // UPDATED renderHistory method with delete buttons
+  // UPDATED renderHistory method with proper event handling (NO INLINE ONCLICK)
   renderHistory() {
     const historyList = this.elements.analysisHistory;
     if (!historyList) return;
@@ -1066,50 +1066,96 @@ class DataExaminerApp {
       // Truncate preview if too long
       const preview = entry.preview.length > 60 ? entry.preview.substring(0, 60) + '...' : entry.preview;
       
-      historyItem.innerHTML = `
-        <div class="history-item-content" onclick="window.app.loadHistoryItem(${index})">
-          <div class="history-title">${preview}</div>
-          <div class="history-date">${formattedDate}</div>
-          ${entry.chartData ? '<div class="history-has-chart"><i class="fas fa-chart-bar"></i></div>' : ''}
-        </div>
-        <button class="history-delete-btn" onclick="window.app.deleteHistoryItem(${index}, event)" title="Delete this analysis">
-          <i class="fas fa-trash-alt"></i>
-        </button>
+      // Create content div
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'history-item-content';
+      contentDiv.innerHTML = `
+        <div class="history-title">${preview}</div>
+        <div class="history-date">${formattedDate}</div>
+        ${entry.chartData ? '<div class="history-has-chart"><i class="fas fa-chart-bar"></i></div>' : ''}
       `;
       
+      // Create delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'history-delete-btn';
+      deleteBtn.title = 'Delete this analysis';
+      deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+      
+      // Add click handlers with proper event propagation stopping
+      contentDiv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.loadHistoryItem(index);
+      });
+      
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.deleteHistoryItem(index, e);
+      });
+      
+      historyItem.appendChild(contentDiv);
+      historyItem.appendChild(deleteBtn);
       historyList.appendChild(historyItem);
     });
   }
 
-  // NEW: Delete a specific history item
-  deleteHistoryItem(index, event) {
-    // Stop event propagation to prevent triggering the history item click
-    event.stopPropagation();
+// UPDATED deleteHistoryItem method with confirmation dialog
+deleteHistoryItem(index, event) {
+    // Stop event propagation to prevent triggering any parent clicks
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
     
-    console.log(`🗑️ Deleting history item at index: ${index}`);
+    console.log(`🗑️ Attempting to delete history item at index: ${index}`);
     
-    // Remove the item from the array
-    this.analysisHistory.splice(index, 1);
-    
-    // Update localStorage
-    localStorage.setItem('analysisHistory', JSON.stringify(this.analysisHistory));
-    
-    // Re-render the history list
-    this.renderHistory();
-    
-    // Show confirmation toast
-    this.showToast('success', 'Analysis removed from history');
-  }
+    // Show confirmation dialog
+    if (confirm('Are you sure you want to delete this analysis from history?')) {
+        console.log(`🗑️ User confirmed deletion of history item at index: ${index}`);
+        
+        // Add animation class
+        const historyItems = document.querySelectorAll('.history-item');
+        if (historyItems[index]) {
+            historyItems[index].classList.add('removing');
+        }
+        
+        // Remove after animation
+        setTimeout(() => {
+            // Remove the item from the array
+            this.analysisHistory.splice(index, 1);
+            
+            // Update localStorage
+            localStorage.setItem('analysisHistory', JSON.stringify(this.analysisHistory));
+            
+            // Re-render the history list
+            this.renderHistory();
+            
+            // Show confirmation toast
+            this.showToast('success', 'Analysis removed from history');
+        }, 200);
+    } else {
+        console.log('❌ User cancelled deletion');
+        // Optional: Show a toast that deletion was cancelled
+        this.showToast('info', 'Deletion cancelled');
+    }
+}
 
-  // NEW: Load a history item by index
+  // UPDATED loadHistoryItem method
   loadHistoryItem(index) {
     const entry = this.analysisHistory[index];
     if (entry) {
+      console.log(`📂 Loading history item at index: ${index}`);
       this.loadFromHistory(entry);
+      
+      // Close sidebar on mobile after loading
+      if (window.innerWidth <= 768) {
+        this.toggleSidebar(false);
+      }
     }
   }
 
-  // NEW: Clear all history
+  // UPDATED clearAllHistory method with animation
   clearAllHistory() {
     if (this.analysisHistory.length === 0) {
       this.showToast('info', 'No history to clear');
@@ -1118,10 +1164,20 @@ class DataExaminerApp {
     
     if (confirm('Are you sure you want to clear all analysis history?')) {
       console.log('🗑️ Clearing all history');
-      this.analysisHistory = [];
-      localStorage.setItem('analysisHistory', JSON.stringify([]));
-      this.renderHistory();
-      this.showToast('success', 'All history cleared');
+      
+      // Add animation class to all items
+      const historyItems = document.querySelectorAll('.history-item');
+      historyItems.forEach(item => {
+        item.classList.add('removing');
+      });
+      
+      // Clear after animation
+      setTimeout(() => {
+        this.analysisHistory = [];
+        localStorage.setItem('analysisHistory', JSON.stringify([]));
+        this.renderHistory();
+        this.showToast('success', 'All history cleared');
+      }, 200);
     }
   }
 
