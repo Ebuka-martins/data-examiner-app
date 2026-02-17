@@ -1,4 +1,4 @@
-// src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH WORKING DELETE FUNCTIONALITY
+// src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH PROFESSIONAL TOAST CONFIRMATIONS
 
 class ChartToggleManager {
     constructor() {
@@ -300,7 +300,7 @@ class DataExaminerApp {
 
     // Clear all history button
     if (this.elements.clearAllHistory) {
-      this.elements.clearAllHistory.addEventListener('click', () => this.clearAllHistory());
+      this.elements.clearAllHistory.addEventListener('click', () => this.showClearAllConfirmation());
     }
 
     window.addEventListener('online', () => this.updateOnlineStatus(true));
@@ -1015,7 +1015,6 @@ class DataExaminerApp {
       .replace(/\n/g, '<br>');
   }
 
-  // UPDATED saveToHistory method with better preview formatting
   saveToHistory(res) {
     const entry = {
       timestamp: new Date().toISOString(),
@@ -1037,7 +1036,6 @@ class DataExaminerApp {
     this.renderHistory();
   }
 
-  // UPDATED renderHistory method with proper event handling (NO INLINE ONCLICK)
   renderHistory() {
     const historyList = this.elements.analysisHistory;
     if (!historyList) return;
@@ -1091,7 +1089,7 @@ class DataExaminerApp {
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        this.deleteHistoryItem(index, e);
+        this.showDeleteConfirmation(index, e);
       });
       
       historyItem.appendChild(contentDiv);
@@ -1100,70 +1098,139 @@ class DataExaminerApp {
     });
   }
 
-// UPDATED deleteHistoryItem method with confirmation dialog
-deleteHistoryItem(index, event) {
+  // NEW: Show professional toast confirmation for delete
+  showDeleteConfirmation(index, event) {
     // Stop event propagation to prevent triggering any parent clicks
     if (event) {
-        event.stopPropagation();
-        event.preventDefault();
+      event.stopPropagation();
+      event.preventDefault();
     }
     
-    console.log(`🗑️ Attempting to delete history item at index: ${index}`);
+    console.log(`🗑️ Showing delete confirmation for history item at index: ${index}`);
     
-    // Show confirmation dialog
-    if (confirm('Are you sure you want to delete this analysis from history?')) {
-        console.log(`🗑️ User confirmed deletion of history item at index: ${index}`);
-        
-        // Add animation class
-        const historyItems = document.querySelectorAll('.history-item');
-        if (historyItems[index]) {
-            historyItems[index].classList.add('removing');
-        }
-        
-        // Remove after animation
-        setTimeout(() => {
-            // Remove the item from the array
-            this.analysisHistory.splice(index, 1);
-            
-            // Update localStorage
-            localStorage.setItem('analysisHistory', JSON.stringify(this.analysisHistory));
-            
-            // Re-render the history list
-            this.renderHistory();
-            
-            // Show confirmation toast
-            this.showToast('success', 'Analysis removed from history');
-        }, 200);
-    } else {
-        console.log('❌ User cancelled deletion');
-        // Optional: Show a toast that deletion was cancelled
-        this.showToast('info', 'Deletion cancelled');
-    }
-}
-
-  // UPDATED loadHistoryItem method
-  loadHistoryItem(index) {
-    const entry = this.analysisHistory[index];
-    if (entry) {
-      console.log(`📂 Loading history item at index: ${index}`);
-      this.loadFromHistory(entry);
+    // Create confirmation toast
+    const toastId = 'delete-confirm-' + Date.now();
+    const toast = document.createElement('div');
+    toast.className = 'toast warning confirmation-toast';
+    toast.id = toastId;
+    toast.innerHTML = `
+      <div class="toast-content">
+        <div class="toast-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="toast-message">Delete this analysis from history?</div>
+      </div>
+      <div class="toast-actions">
+        <button class="toast-btn confirm-btn" id="confirm-${toastId}">
+          <i class="fas fa-check"></i> Yes, Delete
+        </button>
+        <button class="toast-btn cancel-btn" id="cancel-${toastId}">
+          <i class="fas fa-times"></i> Cancel
+        </button>
+      </div>
+    `;
+    
+    // Add to toast container
+    this.elements.toastContainer.appendChild(toast);
+    
+    // Show toast with animation
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)';
+      toast.style.opacity = '1';
+    }, 10);
+    
+    // Handle confirmation
+    const confirmBtn = document.getElementById(`confirm-${toastId}`);
+    const cancelBtn = document.getElementById(`cancel-${toastId}`);
+    
+    confirmBtn.addEventListener('click', () => {
+      // Remove confirmation toast
+      toast.remove();
       
-      // Close sidebar on mobile after loading
-      if (window.innerWidth <= 768) {
-        this.toggleSidebar(false);
+      console.log(`🗑️ User confirmed deletion of history item at index: ${index}`);
+      
+      // Add animation class
+      const historyItems = document.querySelectorAll('.history-item');
+      if (historyItems[index]) {
+        historyItems[index].classList.add('removing');
       }
-    }
+      
+      // Remove after animation
+      setTimeout(() => {
+        // Remove the item from the array
+        this.analysisHistory.splice(index, 1);
+        
+        // Update localStorage
+        localStorage.setItem('analysisHistory', JSON.stringify(this.analysisHistory));
+        
+        // Re-render the history list
+        this.renderHistory();
+        
+        // Show success toast
+        this.showToast('success', 'Analysis removed from history');
+      }, 200);
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+      toast.remove();
+      console.log('❌ User cancelled deletion');
+      this.showToast('info', 'Deletion cancelled');
+    });
+    
+    // Auto-remove after 10 seconds if no action
+    setTimeout(() => {
+      const toastElement = document.getElementById(toastId);
+      if (toastElement && toastElement.parentNode) {
+        toastElement.remove();
+      }
+    }, 10000);
   }
 
-  // UPDATED clearAllHistory method with animation
-  clearAllHistory() {
+  // NEW: Show professional toast confirmation for clear all
+  showClearAllConfirmation() {
     if (this.analysisHistory.length === 0) {
       this.showToast('info', 'No history to clear');
       return;
     }
     
-    if (confirm('Are you sure you want to clear all analysis history?')) {
-      console.log('🗑️ Clearing all history');
+    console.log('🗑️ Showing clear all confirmation');
+    
+    // Create confirmation toast
+    const toastId = 'clearall-confirm-' + Date.now();
+    const toast = document.createElement('div');
+    toast.className = 'toast warning confirmation-toast';
+    toast.id = toastId;
+    toast.innerHTML = `
+      <div class="toast-content">
+        <div class="toast-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="toast-message">Delete ALL analysis history? This cannot be undone.</div>
+      </div>
+      <div class="toast-actions">
+        <button class="toast-btn confirm-btn" id="confirm-${toastId}">
+          <i class="fas fa-check"></i> Yes, Clear All
+        </button>
+        <button class="toast-btn cancel-btn" id="cancel-${toastId}">
+          <i class="fas fa-times"></i> Cancel
+        </button>
+      </div>
+    `;
+    
+    // Add to toast container
+    this.elements.toastContainer.appendChild(toast);
+    
+    // Show toast with animation
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)';
+      toast.style.opacity = '1';
+    }, 10);
+    
+    // Handle confirmation
+    const confirmBtn = document.getElementById(`confirm-${toastId}`);
+    const cancelBtn = document.getElementById(`cancel-${toastId}`);
+    
+    confirmBtn.addEventListener('click', () => {
+      // Remove confirmation toast
+      toast.remove();
+      
+      console.log('🗑️ User confirmed clear all history');
       
       // Add animation class to all items
       const historyItems = document.querySelectorAll('.history-item');
@@ -1178,6 +1245,33 @@ deleteHistoryItem(index, event) {
         this.renderHistory();
         this.showToast('success', 'All history cleared');
       }, 200);
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+      toast.remove();
+      console.log('❌ User cancelled clear all');
+      this.showToast('info', 'Clear all cancelled');
+    });
+    
+    // Auto-remove after 10 seconds if no action
+    setTimeout(() => {
+      const toastElement = document.getElementById(toastId);
+      if (toastElement && toastElement.parentNode) {
+        toastElement.remove();
+      }
+    }, 10000);
+  }
+
+  loadHistoryItem(index) {
+    const entry = this.analysisHistory[index];
+    if (entry) {
+      console.log(`📂 Loading history item at index: ${index}`);
+      this.loadFromHistory(entry);
+      
+      // Close sidebar on mobile after loading
+      if (window.innerWidth <= 768) {
+        this.toggleSidebar(false);
+      }
     }
   }
 
@@ -1221,18 +1315,27 @@ deleteHistoryItem(index, event) {
   showToast(type, message) {
     if (!this.elements.toastContainer) return;
     
-    const existingToasts = this.elements.toastContainer.querySelectorAll('.toast');
+    const existingToasts = this.elements.toastContainer.querySelectorAll('.toast:not(.confirmation-toast)');
     if (existingToasts.length > 3) {
       existingToasts[0].remove();
     }
     
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    
+    // Set icon based on type
+    let icon = 'info-circle';
+    if (type === 'success') icon = 'check-circle';
+    if (type === 'error') icon = 'exclamation-circle';
+    if (type === 'warning') icon = 'exclamation-triangle';
+    
     toast.innerHTML = `
       <div class="toast-content">
+        <div class="toast-icon"><i class="fas fa-${icon}"></i></div>
         <div class="toast-message">${message}</div>
       </div>
     `;
+    
     this.elements.toastContainer.appendChild(toast);
     
     setTimeout(() => {

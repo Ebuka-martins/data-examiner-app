@@ -2344,3 +2344,117 @@ body {
     opacity: 1;
     transform: scale(1.1);
 }
+/* ===== Professional Toast Confirmations ===== */
+.toast.warning.confirmation-toast {
+    border-left-color: #f59e0b;
+    min-width: 300px;
+    padding: 0;
+    background: var(--bg-card);
+}
+
+.confirmation-toast .toast-content {
+    padding: var(--space-4) var(--space-4) var(--space-2) var(--space-4);
+}
+
+.confirmation-toast .toast-icon {
+    color: #f59e0b;
+    font-size: var(--font-size-xl);
+}
+
+.confirmation-toast .toast-message {
+    font-weight: 500;
+    font-size: var(--font-size-base);
+}
+
+.toast-actions {
+    display: flex;
+    gap: 10px;
+    padding: 0 var(--space-4) var(--space-4) var(--space-4);
+}
+
+.toast-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.toast-btn.confirm-btn {
+    background: var(--primary-gradient);
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.toast-btn.confirm-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.toast-btn.confirm-btn:active {
+    transform: translateY(0);
+}
+
+.toast-btn.cancel-btn {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.toast-btn.cancel-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+}
+
+.toast-btn.cancel-btn:active {
+    transform: translateY(0);
+}
+
+.toast-btn i {
+    font-size: var(--font-size-sm);
+}
+
+/* Dark mode support */
+[data-theme="dark"] .toast-btn.cancel-btn {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .toast-btn.cancel-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* Ensure toast container can handle wider toasts */
+.toast-container {
+    max-width: 380px;
+}
+
+/* Animation for confirmation toasts */
+.confirmation-toast {
+    animation: slideInRight 0.3s ease forwards;
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+    .toast.warning.confirmation-toast {
+        min-width: 280px;
+    }
+    
+    .toast-actions {
+        flex-direction: column;
+    }
+    
+    .toast-btn {
+        width: 100%;
+    }
+}

@@ -29,7 +29,7 @@ app.use(
         styleSrcElem: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
         fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-        connectSrc: ["'self'", 'https://api.groq.com'],
+        connectSrc: ["'self'", 'https://api.groq.com', 'https://cdn.jsdelivr.net'], // Added cdn.jsdelivr.net
         workerSrc: ["'self'", 'blob:'],
         frameSrc: ["'self'"],
         manifestSrc: ["'self'"]
@@ -46,13 +46,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ==========================
-// Static files - FIXED PATH
+// Static files
 // ==========================
-// Serve static files from the 'assets' directory
 app.use(express.static(path.join(__dirname, 'assets'), {
   index: false,
   setHeaders: (res, path) => {
-    // Set proper caching headers
     if (path.endsWith('.js') || path.endsWith('.css') || path.endsWith('.png') || path.endsWith('.jpg')) {
       res.set('Cache-Control', 'public, max-age=31536000');
     }
@@ -107,7 +105,6 @@ app.get('/service-worker.js', (req, res) => {
 // ==========================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Create uploads directory if it doesn't exist
     const uploadDir = path.join(__dirname, 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -138,7 +135,7 @@ const upload = multer({
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 // ==========================
-// File parsers
+// File parsers - FIXED EXCEL PARSING
 // ==========================
 const parseCSV = (filePath) =>
   new Promise((resolve, reject) => {
@@ -151,16 +148,30 @@ const parseCSV = (filePath) =>
   });
 
 const parseExcel = (filePath) => {
-  const workbook = XLSX.readFile(filePath);
-  const sheets = {};
-  workbook.SheetNames.forEach((name) => {
-    sheets[name] = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
-  });
-  return sheets;
+  try {
+    const workbook = XLSX.readFile(filePath);
+    const firstSheet = workbook.SheetNames[0]; // Get first sheet
+    const sheet = workbook.Sheets[firstSheet];
+    const data = XLSX.utils.sheet_to_json(sheet);
+    return data; // Return array directly, not an object with sheets
+  } catch (error) {
+    console.error('Excel parsing error:', error);
+    throw new Error('Failed to parse Excel file');
+  }
+};
+
+const parseJSON = (filePath) => {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(content);
+};
+
+const parseText = (filePath) => {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  return content.split('\n').map(line => ({ line: line.trim() })).filter(item => item.line);
 };
 
 // ==========================
-// In-memory conversation storage (for demo - use database in production)
+// In-memory conversation storage
 // ==========================
 const conversationStore = new Map();
 
@@ -174,7 +185,6 @@ const addToConversation = (sessionId, role, content) => {
   }
   const conversation = conversationStore.get(sessionId);
   conversation.push({ role, content });
-  // Keep only last 20 messages to avoid token limits
   if (conversation.length > 20) {
     conversation.splice(0, conversation.length - 20);
   }
@@ -188,10 +198,8 @@ const analyzeDataWithAI = async (data, question, sessionId = null, isFollowUp = 
     const sample = Array.isArray(data) ? data.slice(0, 50) : data;
     const sessionIdToUse = sessionId || uuidv4();
     
-    // Get conversation history for follow-ups
     const conversationHistory = isFollowUp ? getConversationContext(sessionIdToUse) : [];
 
-    // Build messages array
     const messages = [
       {
         role: 'system',
@@ -250,12 +258,10 @@ Use markdown for formatting. DO NOT use color:transparent or invisible text.`,
       },
     ];
 
-    // Add conversation history for follow-ups
     conversationHistory.forEach(msg => {
       messages.push(msg);
     });
 
-    // Add current user message
     messages.push({
       role: 'user',
       content: `Question: ${question}
@@ -265,6 +271,11 @@ ${JSON.stringify(sample, null, 2)}`,
     });
 
     console.log('Sending request to Groq API...');
+    
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY is not set in environment variables');
+    }
+
     const response = await fetch(
       'https://api.groq.com/openai/v1/chat/completions',
       {
@@ -293,11 +304,10 @@ ${JSON.stringify(sample, null, 2)}`,
 
     console.log('Raw AI response received');
     
-    // Clean the response to remove invisible characters
     let cleanedContent = rawContent
-      .replace(/\u0000/g, '') // Remove null characters
-      .replace(/[^\S\r\n]+/g, ' ') // Normalize spaces
-      .replace(/\u200B/g, '') // Remove zero-width spaces
+      .replace(/\u0000/g, '')
+      .replace(/[^\S\r\n]+/g, ' ')
+      .replace(/\u200B/g, '')
       .trim();
     
     let analysis = cleanedContent;
@@ -305,7 +315,6 @@ ${JSON.stringify(sample, null, 2)}`,
     let chartTitle = 'Data Visualization';
     let chartType = 'auto';
 
-    // Extract JSON chart block if present
     const jsonMatch = cleanedContent.match(/```json\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       try {
@@ -313,27 +322,21 @@ ${JSON.stringify(sample, null, 2)}`,
         const jsonStr = jsonMatch[1];
         const parsed = JSON.parse(jsonStr);
         
-        // Check for different possible JSON structures
         if (parsed.chart?.data) {
-          // New format: { chart: { data: {...}, title: "...", type: "..." } }
           chartData = parsed.chart.data;
           chartTitle = parsed.chart.title || chartTitle;
           chartType = parsed.chart.type || chartType;
         } else if (parsed.data) {
-          // Format: { data: {...}, title: "..." }
           chartData = parsed.data;
           chartTitle = parsed.title || chartTitle;
           chartType = parsed.type || chartType;
         } else if (parsed.labels && parsed.datasets) {
-          // Direct chart data format
           chartData = parsed;
         } else if (parsed.chartData) {
-          // Legacy format: { chartData: {...}, chartTitle: "..." }
           chartData = parsed.chartData;
           chartTitle = parsed.chartTitle || chartTitle;
         }
         
-        // Remove the JSON block from analysis text
         analysis = cleanedContent.replace(jsonMatch[0], '').trim();
         console.log('Chart data extracted successfully:', {
           hasChartData: !!chartData,
@@ -343,13 +346,11 @@ ${JSON.stringify(sample, null, 2)}`,
         
       } catch (e) {
         console.warn('Failed to parse chart JSON:', e.message);
-        console.warn('JSON content was:', jsonMatch[1]);
       }
     } else {
       console.log('No JSON chart data found in response');
     }
 
-    // Store in conversation history
     addToConversation(sessionIdToUse, 'user', question);
     addToConversation(sessionIdToUse, 'assistant', cleanedContent);
 
@@ -376,7 +377,7 @@ ${JSON.stringify(sample, null, 2)}`,
 };
 
 // ==========================
-// Routes
+// Routes - FIXED FILE ANALYSIS ROUTE
 // ==========================
 app.post('/api/analyze/file', upload.single('file'), async (req, res) => {
   try {
@@ -388,29 +389,51 @@ app.post('/api/analyze/file', upload.single('file'), async (req, res) => {
 
     let data;
     const filePath = req.file.path;
+    const fileExt = path.extname(req.file.originalname).toLowerCase();
 
-    console.log(`Processing file: ${req.file.originalname}`);
+    console.log(`Processing file: ${req.file.originalname} (${fileExt})`);
 
-    if (req.file.originalname.endsWith('.csv')) {
-      data = await parseCSV(filePath);
-    } else if (req.file.originalname.match(/\.(xlsx|xls)$/)) {
-      data = parseExcel(filePath);
-    } else {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      data = JSON.parse(content);
+    try {
+      if (fileExt === '.csv') {
+        data = await parseCSV(filePath);
+      } else if (fileExt === '.xlsx' || fileExt === '.xls') {
+        data = parseExcel(filePath);
+      } else if (fileExt === '.json') {
+        data = parseJSON(filePath);
+      } else if (fileExt === '.txt') {
+        data = parseText(filePath);
+      } else {
+        throw new Error('Unsupported file type');
+      }
+
+      console.log(`Successfully parsed data with ${Array.isArray(data) ? data.length : 'multiple'} rows`);
+      
+      // Clean up uploaded file
+      fs.unlinkSync(filePath);
+
+      const question = req.body.question || 'Analyze this data and create visualizations';
+      const sessionId = req.body.conversationId || uuidv4();
+
+      const result = await analyzeDataWithAI(data, question, sessionId, false);
+      res.json({ success: true, ...result });
+      
+    } catch (parseError) {
+      console.error('File parsing error:', parseError);
+      // Clean up file if it exists
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      return res.status(400).json({ 
+        success: false, 
+        error: `Failed to parse file: ${parseError.message}` 
+      });
     }
-
-    console.log(`Parsed data with ${Array.isArray(data) ? data.length : 'multiple'} rows`);
-    fs.unlinkSync(filePath);
-
-    const question = req.body.question || 'Analyze this data and create visualizations';
-    const sessionId = req.body.conversationId || uuidv4();
-
-    const result = await analyzeDataWithAI(data, question, sessionId, false);
-    res.json({ success: true, ...result });
+    
   } catch (err) {
     console.error('File analysis error:', err);
-    if (req.file?.path) fs.unlinkSync(req.file.path);
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -418,30 +441,25 @@ app.post('/api/analyze/file', upload.single('file'), async (req, res) => {
 app.post('/api/analyze/text', async (req, res) => {
   const { text, question, conversationId } = req.body;
 
-  // Require a question
   if (!question?.trim()) {
     return res
       .status(400)
       .json({ success: false, error: 'No question provided' });
   }
 
-  // Parse text data
   let dataToSend;
   if (text?.trim()) {
     try {
       dataToSend = JSON.parse(text);
     } catch {
-      // If not JSON, send as array of lines
       dataToSend = text.split('\n').map((line) => ({ line }));
     }
   } else {
-    // For follow-ups without new data, use stored conversation context
     const conversationHistory = getConversationContext(conversationId);
     if (conversationHistory.length > 0) {
-      // Extract data from previous conversation
       const previousMessages = conversationHistory
         .filter(msg => msg.role === 'user')
-        .slice(-3); // Get last 3 user messages
+        .slice(-3);
       dataToSend = previousMessages.map(msg => ({ question: msg.content }));
     } else {
       dataToSend = '[Continuing from previous analysis]';
@@ -478,17 +496,13 @@ app.post('/api/chat/followup', async (req, res) => {
         .json({ success: false, error: 'No conversation ID provided' });
     }
 
-    // Get conversation history for context
     const conversationHistory = getConversationContext(conversationId);
     
-    // Create a data context from previous messages
     let dataContext = '[Previous conversation context]';
     if (conversationHistory.length > 0) {
-      // Extract relevant data points from conversation
       const insights = conversationHistory
         .filter(msg => msg.role === 'assistant')
         .map(msg => {
-          // Extract key metrics and insights from previous responses
           const lines = msg.content.split('\n');
           const keyLines = lines.filter(line => 
             line.includes(':') || 
@@ -589,7 +603,7 @@ app.get('/api/test/chart', (req, res) => {
 });
 
 // ==========================
-// Health & SPA fallback - FIXED
+// Health & SPA fallback
 // ==========================
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -599,15 +613,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// FIXED: Serve index.html for all non-API routes
+// Serve index.html for all non-API routes
 app.get('*', (req, res) => {
-  // Check if the request is for an API route
   if (req.path.startsWith('/api/')) {
-    // If it's an API route that doesn't exist, return 404
     return res.status(404).json({ success: false, error: 'API endpoint not found' });
   }
   
-  // For all other routes, serve the index.html
   res.sendFile(path.join(__dirname, 'assets', 'index.html'), (err) => {
     if (err) {
       console.error('Error serving index.html:', err);
@@ -618,16 +629,13 @@ app.get('*', (req, res) => {
 
 // Clean up old conversations periodically
 setInterval(() => {
-  // In a real app, you'd track timestamps. For demo, we'll just clear old entries
-  // to prevent memory leaks
   if (conversationStore.size > 100) {
-    // Clear half of the conversations if we have too many
     const keys = Array.from(conversationStore.keys());
     const toDelete = keys.slice(0, Math.floor(keys.length / 2));
     toDelete.forEach(key => conversationStore.delete(key));
     console.log(`Cleaned up ${toDelete.length} old conversations`);
   }
-}, 30 * 60 * 1000); // Every 30 minutes
+}, 30 * 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`🚀 Data Examiner running on http://localhost:${PORT}`);
