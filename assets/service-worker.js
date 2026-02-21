@@ -1,4 +1,4 @@
-// service-worker.js - FIXED VERSION
+// service-worker.js - FIXED VERSION (No message channel errors)
 const CACHE_NAME = 'data-examiner-cache-v3';
 const STATIC_ASSETS = [
   '/',
@@ -73,12 +73,10 @@ self.addEventListener('fetch', event => {
       .then(cached => {
         // If cached, return it
         if (cached) {
-          console.log('Serving from cache:', event.request.url);
           return cached;
         }
 
         // Otherwise fetch from network
-        console.log('Fetching from network:', event.request.url);
         return fetch(event.request).then(response => {
           // Only cache successful responses
           if (!response || response.status !== 200 || response.type !== 'basic') {
@@ -88,10 +86,9 @@ self.addEventListener('fetch', event => {
           // Clone the response for caching
           const responseToCache = response.clone();
           
-          // Open cache and store response
+          // Open cache and store response (don't wait for this)
           caches.open(CACHE_NAME)
             .then(cache => {
-              console.log('Caching new resource:', event.request.url);
               cache.put(event.request, responseToCache);
             })
             .catch(err => {
@@ -100,30 +97,40 @@ self.addEventListener('fetch', event => {
 
           return response;
         }).catch(error => {
-          console.error('Fetch failed:', error, event.request.url);
+          console.error('Fetch failed:', error);
           
-          // Fallback for HTML requests
-          if (event.request.headers.get('accept').includes('text/html')) {
+          // Return a simple offline response instead of HTML for non-HTML requests
+          if (event.request.headers.get('accept')?.includes('text/html')) {
             return caches.match('/index.html');
           }
           
-          // Return offline message
-          return new Response(
-            '<h3>You are offline</h3><p>Please check your internet connection.</p>',
-            { 
-              status: 503,
-              statusText: 'Offline',
-              headers: { 'Content-Type': 'text/html' }
-            }
-          );
+          // Return a basic offline response
+          return new Response('You are offline', { 
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({
+              'Content-Type': 'text/plain',
+            }),
+          });
         });
       })
   );
 });
 
-// Listen for messages from the client
+// OPTIMIZED: Remove message event listener entirely or keep it minimal
+// This is the key fix - avoid complex async responses
 self.addEventListener('message', event => {
+  // Just do simple actions without returning promises
   if (event.data === 'skipWaiting') {
     self.skipWaiting();
+  }
+  // Don't return anything - this prevents the channel error
+});
+
+// Optional: Add a simple ping handler that doesn't require async response
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'PING') {
+    // Just log, don't respond
+    console.log('Ping received');
   }
 });

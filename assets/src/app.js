@@ -1,4 +1,4 @@
-// src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH PROFESSIONAL TOAST CONFIRMATIONS
+// src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH ENHANCED MENU TOGGLE AND FIRST-VISIT HINTS
 
 class ChartToggleManager {
     constructor() {
@@ -103,6 +103,7 @@ class DataExaminerApp {
     this.applyTheme();
     this.initializeEventListeners();
     this.registerServiceWorker();
+    this.checkFirstVisit(); // Check if first visit and show hints
     
     console.log('✅ App initialized with elements:', Object.keys(this.elements));
   }
@@ -152,6 +153,15 @@ class DataExaminerApp {
                     this.currentChartTitle || 'Data Visualization'
                 );
             }, 300);
+        }
+    });
+    
+    // Keyboard shortcut for menu toggle (Alt+M)
+    document.addEventListener('keydown', (e) => {
+        if (e.altKey && e.key === 'm') {
+            e.preventDefault();
+            this.toggleSidebar();
+            this.showToast('success', 'Menu toggled with Alt+M');
         }
     });
     
@@ -307,6 +317,81 @@ class DataExaminerApp {
     window.addEventListener('offline', () => this.updateOnlineStatus(false));
     
     console.log('✅ Event listeners initialized');
+  }
+
+  // Check if first visit and show hints (Option 4)
+  checkFirstVisit() {
+    if (!localStorage.getItem('visited')) {
+        setTimeout(() => {
+            // Show toast notification
+            this.showToast('info', '👆 Click the colorful button in the top-left to open the menu!', 8000);
+            
+            // Pulse the menu button
+            const menuBtn = this.elements.menuToggle;
+            if (menuBtn) {
+                menuBtn.classList.add('pulse');
+                setTimeout(() => {
+                    menuBtn.classList.remove('pulse');
+                }, 8000);
+            }
+            
+            // Show welcome hint and arrow
+            const welcomeHint = document.getElementById('welcomeHint');
+            const menuArrow = document.getElementById('menuArrow');
+            
+            if (welcomeHint) {
+                welcomeHint.style.display = 'flex';
+            }
+            
+            if (menuArrow) {
+                menuArrow.style.display = 'block';
+            }
+            
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                if (welcomeHint) {
+                    welcomeHint.style.animation = 'fadeOut 0.5s ease forwards';
+                    setTimeout(() => {
+                        if (welcomeHint && welcomeHint.parentNode) {
+                            welcomeHint.remove();
+                        }
+                    }, 500);
+                }
+                if (menuArrow && menuArrow.parentNode) {
+                    menuArrow.remove();
+                }
+            }, 10000);
+            
+            localStorage.setItem('visited', 'true');
+        }, 1500);
+    } else {
+        // For returning users, still show the hint but for shorter time
+        setTimeout(() => {
+            const welcomeHint = document.getElementById('welcomeHint');
+            const menuArrow = document.getElementById('menuArrow');
+            
+            if (welcomeHint) {
+                welcomeHint.style.display = 'flex';
+                setTimeout(() => {
+                    welcomeHint.style.animation = 'fadeOut 0.5s ease forwards';
+                    setTimeout(() => {
+                        if (welcomeHint && welcomeHint.parentNode) {
+                            welcomeHint.remove();
+                        }
+                    }, 500);
+                }, 3000);
+            }
+            
+            if (menuArrow) {
+                menuArrow.style.display = 'block';
+                setTimeout(() => {
+                    if (menuArrow && menuArrow.parentNode) {
+                        menuArrow.remove();
+                    }
+                }, 3000);
+            }
+        }, 1000);
+    }
   }
 
   toggleSidebar(show) {
@@ -1098,7 +1183,6 @@ class DataExaminerApp {
     });
   }
 
-  // NEW: Show professional toast confirmation for delete
   showDeleteConfirmation(index, event) {
     // Stop event propagation to prevent triggering any parent clicks
     if (event) {
@@ -1184,7 +1268,6 @@ class DataExaminerApp {
     }, 10000);
   }
 
-  // NEW: Show professional toast confirmation for clear all
   showClearAllConfirmation() {
     if (this.analysisHistory.length === 0) {
       this.showToast('info', 'No history to clear');
@@ -1312,7 +1395,7 @@ class DataExaminerApp {
     }
   }
 
-  showToast(type, message) {
+  showToast(type, message, duration = 4000) {
     if (!this.elements.toastContainer) return;
     
     const existingToasts = this.elements.toastContainer.querySelectorAll('.toast:not(.confirmation-toast)');
@@ -1353,7 +1436,7 @@ class DataExaminerApp {
           }
         }, 300);
       }
-    }, 4000);
+    }, duration);
   }
 
   exportChart() {

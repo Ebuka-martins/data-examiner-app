@@ -40,7 +40,7 @@
         <!-- Sidebar Toggle Overlay -->
         <div class="overlay" id="sidebarOverlay"></div>
         
-        <!-- Sidebar - UPDATED WITH SCROLLABLE CONTENT AND DELETE BUTTONS -->
+        <!-- Sidebar -->
         <aside class="sidebar" id="sidebar" aria-label="Main navigation">
             <div class="sidebar-header">
                 <div class="logo-container">
@@ -102,7 +102,7 @@
                 </section>
             </div>
             
-            <!-- Status & Info - Stays at bottom -->
+            <!-- Status & Info -->
             <footer class="sidebar-footer">
                 <div class="status-indicator" id="statusIndicator">
                     <span class="status-dot online" aria-hidden="true"></span>
@@ -114,11 +114,12 @@
         
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Header -->
+            <!-- Header with Enhanced Menu Toggle (Option 5) -->
             <header class="main-header">
                 <div class="header-left">
                     <button class="menu-toggle" id="menuToggle" aria-label="Toggle sidebar">
-                        <i class="fas fa-bars" aria-hidden="true"></i>
+                        <i class="fas fa-bars"></i>
+                        <span class="sr-only">Menu</span>
                     </button>
                 </div>
                 <div class="header-center">
@@ -136,6 +137,20 @@
                     </button>
                 </div>
             </header>
+
+            <!-- Welcome Hint (Option 2) -->
+            <div class="welcome-hint" id="welcomeHint">
+                <i class="fas fa-hand-point-left"></i>
+                <p>👋 Click the <strong>colorful button</strong> in the top-left corner to open the menu and upload files!</p>
+                <button onclick="this.parentElement.remove()" aria-label="Dismiss">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Animated Arrow (Option 2) -->
+            <div class="menu-arrow" id="menuArrow">
+                <i class="fas fa-arrow-left"></i>
+            </div>
             
             <!-- Chat Container -->
             <div class="chat-container" id="chatContainer">
