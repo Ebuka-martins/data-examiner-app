@@ -11,7 +11,8 @@
     "setup": "npm install && mkdir -p uploads assets/icons assets/favicon assets/src",
     "generate-icons": "node scripts/generate-icons.js",
     "fix-permissions": "chmod -R 755 . && chmod 644 package.json",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "echo \"No tests specified\" && exit 0",
+    "heroku-postbuild": "echo 'Build completed successfully'"
   },
   "keywords": [
     "ai",
@@ -42,14 +43,15 @@
     "nodemon": "^3.0.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "18.x",
+    "npm": "9.x"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/data-examiner-app.git"
+    "url": "https://github.com/Ebuka-martins/data-examiner-app.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/data-examiner-app/issues"
+    "url": "https://github.com/Ebuka-martins/data-examiner-app/issues"
   },
-  "homepage": "https://github.com/yourusername/data-examiner-app#readme"
+  "homepage": "https://github.com/Ebuka-martins/data-examiner-app#readme"
 }
