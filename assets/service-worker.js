@@ -1,7 +1,8 @@
-// service-worker.js - FIXED VERSION (No message channel errors)
-const CACHE_NAME = 'data-examiner-cache-v3';
+// service-worker.js - UPDATED VERSION with login.html support
+const CACHE_NAME = 'data-examiner-cache-v5'; // Incremented version
 const STATIC_ASSETS = [
   '/',
+  '/login.html',  // Added login.html first!
   '/index.html',
   '/styles.css',
   '/manifest.json',
@@ -21,15 +22,14 @@ const STATIC_ASSETS = [
 
 self.addEventListener('install', event => {
   console.log('Service Worker installing...');
+  // Force immediate activation
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Caching static assets...');
         return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => {
-        console.log('Service Worker installed and assets cached');
-        return self.skipWaiting();
       })
       .catch(err => {
         console.error('Cache installation failed:', err);
@@ -39,27 +39,29 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   console.log('Service Worker activating...');
+  
+  // Delete old caches
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
+    caches.keys().then(keys => {
+      return Promise.all(
         keys.filter(key => key !== CACHE_NAME)
           .map(key => {
             console.log('Deleting old cache:', key);
             return caches.delete(key);
           })
-      )
-    ).then(() => {
+      );
+    }).then(() => {
       console.log('Service Worker activated');
+      // Take control of all clients immediately
       return self.clients.claim();
     })
   );
 });
 
 self.addEventListener('fetch', event => {
-  // Skip non-GET requests, API calls, and non-HTTP protocols
+  // Skip non-GET requests and API calls
   if (event.request.method !== 'GET' || 
-      event.request.url.includes('/api/') ||
-      !event.request.url.startsWith('http')) {
+      event.request.url.includes('/api/')) {
     return;
   }
 
@@ -68,69 +70,87 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Network-first strategy for HTML pages
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Cache the fresh response
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache if offline
+          return caches.match(event.request).then(cached => {
+            if (cached) return cached;
+            // If it's a navigation and no cache, return login page
+            return caches.match('/login.html');
+          });
+        })
+    );
+    return;
+  }
+
+  // Cache-first strategy for static assets
   event.respondWith(
     caches.match(event.request)
       .then(cached => {
-        // If cached, return it
         if (cached) {
+          // Return cached version
           return cached;
         }
 
-        // Otherwise fetch from network
+        // Not in cache, fetch from network
         return fetch(event.request).then(response => {
           // Only cache successful responses
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          // Clone the response for caching
-          const responseToCache = response.clone();
-          
-          // Open cache and store response (don't wait for this)
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            })
-            .catch(err => {
-              console.error('Cache put error:', err);
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseClone);
             });
-
-          return response;
-        }).catch(error => {
-          console.error('Fetch failed:', error);
-          
-          // Return a simple offline response instead of HTML for non-HTML requests
-          if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/index.html');
           }
-          
-          // Return a basic offline response
-          return new Response('You are offline', { 
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({
-              'Content-Type': 'text/plain',
-            }),
+          return response;
+        });
+      })
+      .catch(error => {
+        console.error('Fetch failed:', error);
+        
+        // If offline and it's a navigation request, return login page
+        if (event.request.mode === 'navigate') {
+          return caches.match('/login.html').then(loginPage => {
+            if (loginPage) return loginPage;
+            // If no login page in cache, return basic offline message
+            return new Response('You are offline. Please check your connection.', { 
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: new Headers({
+                'Content-Type': 'text/plain',
+              }),
+            });
           });
+        }
+        
+        // For non-navigation requests, return a simple offline response
+        return new Response('Offline', { 
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: new Headers({
+            'Content-Type': 'text/plain',
+          }),
         });
       })
   );
 });
 
-// OPTIMIZED: Remove message event listener entirely or keep it minimal
-// This is the key fix - avoid complex async responses
+// Simple message handler
 self.addEventListener('message', event => {
-  // Just do simple actions without returning promises
   if (event.data === 'skipWaiting') {
     self.skipWaiting();
   }
-  // Don't return anything - this prevents the channel error
-});
-
-// Optional: Add a simple ping handler that doesn't require async response
-self.addEventListener('message', event => {
   if (event.data && event.data.type === 'PING') {
-    // Just log, don't respond
     console.log('Ping received');
   }
 });
