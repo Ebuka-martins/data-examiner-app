@@ -29,7 +29,7 @@ app.use(
         styleSrcElem: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
         fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-        connectSrc: ["'self'", 'https://api.groq.com', 'https://cdn.jsdelivr.net'], // Added cdn.jsdelivr.net
+        connectSrc: ["'self'", 'https://api.groq.com', 'https://cdn.jsdelivr.net'],
         workerSrc: ["'self'", 'blob:'],
         frameSrc: ["'self'"],
         manifestSrc: ["'self'"]
@@ -46,7 +46,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ==========================
-// Static files
+// Serve static files
 // ==========================
 app.use(express.static(path.join(__dirname, 'assets'), {
   index: false,
@@ -56,15 +56,6 @@ app.use(express.static(path.join(__dirname, 'assets'), {
     }
   }
 }));
-
-// Explicit routes for specific assets
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'assets', 'index.html'));
-});
-
-app.get('/index.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'assets', 'index.html'));
-});
 
 // Serve JavaScript files from src directory
 app.use('/src', express.static(path.join(__dirname, 'assets', 'src'), {
@@ -80,7 +71,21 @@ app.use('/favicon', express.static(path.join(__dirname, 'assets', 'favicon'), {
   maxAge: '1y'
 }));
 
-// Serve manifest and service worker with proper headers
+// ==========================
+// Page Routes
+// ==========================
+
+// Login page
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'assets', 'login.html'));
+});
+
+// Main app - will be protected by frontend auth
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'assets', 'index.html'));
+});
+
+// Serve manifest and service worker
 app.get('/manifest.json', (req, res) => {
   res.sendFile(path.join(__dirname, 'assets', 'manifest.json'), {
     headers: {
@@ -135,7 +140,7 @@ const upload = multer({
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 // ==========================
-// File parsers - FIXED EXCEL PARSING
+// File parsers
 // ==========================
 const parseCSV = (filePath) =>
   new Promise((resolve, reject) => {
@@ -150,10 +155,10 @@ const parseCSV = (filePath) =>
 const parseExcel = (filePath) => {
   try {
     const workbook = XLSX.readFile(filePath);
-    const firstSheet = workbook.SheetNames[0]; // Get first sheet
+    const firstSheet = workbook.SheetNames[0];
     const sheet = workbook.Sheets[firstSheet];
     const data = XLSX.utils.sheet_to_json(sheet);
-    return data; // Return array directly, not an object with sheets
+    return data;
   } catch (error) {
     console.error('Excel parsing error:', error);
     throw new Error('Failed to parse Excel file');
@@ -191,7 +196,7 @@ const addToConversation = (sessionId, role, content) => {
 };
 
 // ==========================
-// AI Analysis with Enhanced System Prompt
+// AI Analysis
 // ==========================
 const analyzeDataWithAI = async (data, question, sessionId = null, isFollowUp = false) => {
   try {
@@ -377,7 +382,7 @@ ${JSON.stringify(sample, null, 2)}`,
 };
 
 // ==========================
-// Routes - FIXED FILE ANALYSIS ROUTE
+// Routes
 // ==========================
 app.post('/api/analyze/file', upload.single('file'), async (req, res) => {
   try {
@@ -603,27 +608,13 @@ app.get('/api/test/chart', (req, res) => {
 });
 
 // ==========================
-// Health & SPA fallback
+// Health & API routes
 // ==========================
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     uptime: process.uptime(),
     conversations: conversationStore.size 
-  });
-});
-
-// Serve index.html for all non-API routes
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ success: false, error: 'API endpoint not found' });
-  }
-  
-  res.sendFile(path.join(__dirname, 'assets', 'index.html'), (err) => {
-    if (err) {
-      console.error('Error serving index.html:', err);
-      res.status(500).send('Error loading application');
-    }
   });
 });
 
@@ -642,5 +633,6 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📈 Test chart: http://localhost:${PORT}/api/test/chart`);
   console.log(`🌐 Frontend: http://localhost:${PORT}/`);
+  console.log(`🔐 Login page: http://localhost:${PORT}/login`);
   console.log(`📱 PWA ready: http://localhost:${PORT}/manifest.json`);
 });

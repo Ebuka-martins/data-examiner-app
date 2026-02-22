@@ -1,5 +1,5 @@
-// src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH ENHANCED MENU TOGGLE AND FIRST-VISIT HINTS
-// UPDATED: Removed toast notifications from Test Chart, Theme Toggle, Chart Toggle, First-visit, and Keyboard shortcut
+// src/app.js — Data Examiner — COMPLETE WITH AUTHENTICATION
+// COMPLETED VERSION - All methods properly implemented
 
 class ChartToggleManager {
     constructor() {
@@ -55,8 +55,6 @@ class ChartToggleManager {
         });
         document.dispatchEvent(event);
         
-        // Toast notification removed - no popup when hiding/showing chart
-        
         console.log('📊 Chart toggled:', this.isCollapsed ? 'collapsed' : 'expanded');
     }
     
@@ -96,10 +94,18 @@ class DataExaminerApp {
 
     this.elements = {};
     this.initializeElements();
+    
+    // Check authentication first
+    if (!this.checkAuthentication()) {
+      return; // Stop initialization if not authenticated
+    }
+    
     this.applyTheme();
     this.initializeEventListeners();
     this.registerServiceWorker();
-    this.checkFirstVisit(); // Check if first visit and show hints
+    this.checkFirstVisit();
+    this.setupLogout(); // Setup logout button
+    this.renderHistory(); // Render history after initialization
     
     console.log('✅ App initialized with elements:', Object.keys(this.elements));
   }
@@ -112,15 +118,110 @@ class DataExaminerApp {
       'dataChart', 'chartType', 'exportChart', 'messageInput', 'attachBtn',
       'sendBtn', 'fileIndicator', 'fileName', 'clearFile', 'quickUpload',
       'quickPaste', 'quickSample', 'loadingOverlay', 'installBtn',
-      'themeToggle', 'toastContainer', 'testChartBtn', 'clearAllHistory'
+      'themeToggle', 'toastContainer', 'testChartBtn', 'clearAllHistory', 'logoutBtn'
     ];
 
     ids.forEach(id => {
       this.elements[id] = document.getElementById(id);
-      if (!this.elements[id] && id !== 'testChartBtn' && id !== 'clearAllHistory') {
+      if (!this.elements[id] && id !== 'testChartBtn' && id !== 'clearAllHistory' && id !== 'logoutBtn') {
         console.warn(`⚠️ Element ${id} not found`);
       }
     });
+  }
+
+  // Check authentication and redirect if needed
+  checkAuthentication() {
+    const currentUser = localStorage.getItem('currentUser');
+    const currentPath = window.location.pathname;
+    
+    // If on login page and already logged in, redirect to main app
+    if (currentPath === '/login' && currentUser) {
+      window.location.href = '/';
+      return false;
+    }
+    
+    // If on main app and not logged in, redirect to login
+    if (currentPath === '/' && !currentUser) {
+      window.location.href = '/login';
+      return false;
+    }
+    
+    // Display user info if logged in
+    if (currentUser && currentPath === '/') {
+      const user = JSON.parse(currentUser);
+      console.log(`👤 Logged in as: ${user.email}`);
+      this.addUserIndicator(user);
+    }
+    
+    return true;
+  }
+
+  // Add user indicator to header
+  addUserIndicator(user) {
+    const headerRight = document.querySelector('.header-right');
+    if (headerRight && !document.querySelector('.user-indicator')) {
+      const userIndicator = document.createElement('div');
+      userIndicator.className = 'user-indicator';
+      userIndicator.innerHTML = `
+        <i class="fas fa-user-circle"></i>
+        <span class="user-email">${user.name || user.email.split('@')[0]}</span>
+      `;
+      headerRight.insertBefore(userIndicator, headerRight.firstChild);
+    }
+  }
+
+  // Setup logout button
+  setupLogout() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.logout();
+      });
+    } else {
+      // Create logout button if it doesn't exist
+      this.createLogoutButton();
+    }
+  }
+
+  // Create logout button if not in HTML
+  createLogoutButton() {
+    const headerRight = document.querySelector('.header-right');
+    if (headerRight && !document.getElementById('logoutBtn')) {
+      const logoutBtn = document.createElement('button');
+      logoutBtn.id = 'logoutBtn';
+      logoutBtn.className = 'logout-btn';
+      logoutBtn.title = 'Logout';
+      logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i>';
+      logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.logout();
+      });
+      
+      // Add before theme toggle
+      const themeToggle = document.getElementById('themeToggle');
+      if (themeToggle) {
+        headerRight.insertBefore(logoutBtn, themeToggle);
+      } else {
+        headerRight.appendChild(logoutBtn);
+      }
+    }
+  }
+
+  // Logout function
+  logout() {
+    // Clear user session
+    localStorage.removeItem('currentUser');
+    
+    // Show confirmation
+    if (this.showToast) {
+      this.showToast('success', 'Logged out successfully');
+    }
+    
+    // Redirect to login page
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 500);
   }
 
   applyTheme() {
@@ -152,12 +253,11 @@ class DataExaminerApp {
         }
     });
     
-    // Keyboard shortcut for menu toggle (Alt+M) - Toast removed
+    // Keyboard shortcut for menu toggle (Alt+M)
     document.addEventListener('keydown', (e) => {
         if (e.altKey && e.key === 'm') {
             e.preventDefault();
             this.toggleSidebar();
-            // Toast notification removed - no popup for keyboard shortcut
         }
     });
     
@@ -315,12 +415,10 @@ class DataExaminerApp {
     console.log('✅ Event listeners initialized');
   }
 
-  // Check if first visit and show hints - Toast removed
+  // Check if first visit and show hints
   checkFirstVisit() {
     if (!localStorage.getItem('visited')) {
         setTimeout(() => {
-            // Toast notification removed - no popup for first visit
-            
             // Pulse the menu button
             const menuBtn = this.elements.menuToggle;
             if (menuBtn) {
@@ -428,12 +526,10 @@ class DataExaminerApp {
     }
   }
 
-  // Theme Toggle - Toast removed
   toggleTheme() {
     this.isDarkMode = !this.isDarkMode;
     localStorage.setItem('darkMode', this.isDarkMode);
     this.applyTheme();
-    // Toast notification removed - no popup when toggling theme
   }
 
   updateOnlineStatus(isOnline) {
@@ -1520,7 +1616,7 @@ class DataExaminerApp {
     this.showToast('success', 'Sample sales data loaded. Click "Analyze" to get insights!');
   }
 
-  // Test Chart - Toast removed
+  // COMPLETED testChart method
   testChart() {
     console.log('🧪 Testing chart system...');
     
@@ -1538,19 +1634,20 @@ class DataExaminerApp {
     if (window.chartManager) {
       const success = this.displayChartWithData(testData, 'bar', 'Test Chart - Sales Data');
       if (success) {
-        // Toast notification removed - no popup for successful test chart
         console.log('✅ Test chart should be visible');
+        this.showToast('success', 'Test chart displayed successfully');
       } else {
-        // Toast notification removed - no popup for failed test chart
         console.log('❌ Test chart failed');
+        this.showToast('error', 'Test chart failed to display');
       }
     } else {
-      // Toast notification removed - no popup for chart manager not initialized
       console.log('❌ Chart manager not available');
+      this.showToast('error', 'Chart manager not initialized');
     }
   }
 }
 
+// Global helper functions
 window.testChartToggle = function() {
     if (window.chartToggle) {
         console.log('Testing chart toggle...');
@@ -1581,88 +1678,149 @@ window.forceChartVisible = function() {
     }
 };
 
-setTimeout(() => {
-    window.forceChartVisible();
-}, 2000);
-
+// Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🏁 DOM loaded, initializing app...');
   
-  if ('serviceWorker' in navigator) {
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => caches.delete(cacheName))
-      );
-    }).then(() => {
-      console.log('🧹 Old caches cleared');
-    });
-  }
-  
-  try {
-    const chartSection = document.getElementById('chartSection');
-    if (chartSection) {
-      chartSection.style.display = 'block';
+  // Check if we're on the main app page (not login)
+  if (window.location.pathname !== '/login') {
+    
+    if ('serviceWorker' in navigator) {
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => caches.delete(cacheName))
+        );
+      }).then(() => {
+        console.log('🧹 Old caches cleared');
+      });
     }
     
-    const welcomeScreen = document.getElementById('welcomeScreen');
-    if (welcomeScreen) {
-      welcomeScreen.style.display = 'flex';
-    }
-    
-    window.chartToggle = new ChartToggleManager();
-    
-    window.app = new DataExaminerApp();
-    
-    const chartCanvas = document.getElementById('dataChart');
-    if (chartCanvas) {
-      const chartManager = new ChartManager(chartCanvas);
-      window.chartManager = chartManager;
-      chartManager.initialize();
-      console.log('📊 Chart manager initialized');
+    try {
+      const chartSection = document.getElementById('chartSection');
+      if (chartSection) {
+        chartSection.style.display = 'block';
+      }
       
-      setTimeout(() => {
-        console.log('🔄 Showing initial test chart');
-        const testData = {
-          labels: ['Loading', 'System', 'Ready'],
-          datasets: [{
-            label: 'Status',
-            data: [100, 75, 50],
-            backgroundColor: 'rgba(16, 163, 127, 0.6)'
-          }]
-        };
-        chartManager.updateChart(testData, 'bar', 'System Status');
-      }, 1000);
-    } else {
-      console.error('❌ Chart canvas not found!');
-    }
-    
-    if (window.app && typeof window.app.renderHistory === 'function') {
-      window.app.renderHistory();
-    }
-    
-    window.testChart = () => {
-      if (window.app && typeof window.app.testChart === 'function') {
-        window.app.testChart();
+      const welcomeScreen = document.getElementById('welcomeScreen');
+      if (welcomeScreen) {
+        welcomeScreen.style.display = 'flex';
       }
-    };
-    
-    window.toggleSidebar = (show) => {
-      if (window.app && typeof window.app.toggleSidebar === 'function') {
-        window.app.toggleSidebar(show);
+      
+      window.chartToggle = new ChartToggleManager();
+      
+      window.app = new DataExaminerApp();
+      
+      const chartCanvas = document.getElementById('dataChart');
+      if (chartCanvas) {
+        const chartManager = new ChartManager(chartCanvas);
+        window.chartManager = chartManager;
+        chartManager.initialize();
+        console.log('📊 Chart manager initialized');
+        
+        setTimeout(() => {
+          console.log('🔄 Showing initial test chart');
+          const testData = {
+            labels: ['Loading', 'System', 'Ready'],
+            datasets: [{
+              label: 'Status',
+              data: [100, 75, 50],
+              backgroundColor: 'rgba(16, 163, 127, 0.6)'
+            }]
+          };
+          chartManager.updateChart(testData, 'bar', 'System Status');
+        }, 1000);
+      } else {
+        console.error('❌ Chart canvas not found!');
       }
-    };
-    
-    console.log('🚀 Data Examiner loaded!');
-    console.log('🧪 Test functions available:');
-    console.log('   - testChart() - Show test chart');
-    console.log('   - testChartToggle() - Test chart slide');
-    console.log('   - forceChartVisible() - Reset visibility');
-    console.log('   - toggleSidebar() - Toggle sidebar');
-    
-    console.log('📊 Chart toggle state:', window.chartToggle ? window.chartToggle.isCollapsed : 'not initialized');
-    
-  } catch (error) {
-    console.error('❌ Error initializing app:', error);
-    alert('Error initializing app. Please check console for details.');
+      
+      if (window.app && typeof window.app.renderHistory === 'function') {
+        window.app.renderHistory();
+      }
+      
+      window.testChart = () => {
+        if (window.app && typeof window.app.testChart === 'function') {
+          window.app.testChart();
+        }
+      };
+      
+      window.toggleSidebar = (show) => {
+        if (window.app && typeof window.app.toggleSidebar === 'function') {
+          window.app.toggleSidebar(show);
+        }
+      };
+      
+      console.log('🚀 Data Examiner loaded!');
+      console.log('🧪 Test functions available:');
+      console.log('   - testChart() - Show test chart');
+      console.log('   - testChartToggle() - Test chart slide');
+      console.log('   - forceChartVisible() - Reset visibility');
+      console.log('   - toggleSidebar() - Toggle sidebar');
+      
+      console.log('📊 Chart toggle state:', window.chartToggle ? window.chartToggle.isCollapsed : 'not initialized');
+      
+    } catch (error) {
+      console.error('❌ Error initializing app:', error);
+    }
   }
 });
+
+// Add CSS for logout button (add this to your styles.css or keep in app.js)
+const logoutButtonStyle = document.createElement('style');
+logoutButtonStyle.textContent = `
+  .logout-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: var(--bg-tertiary);
+    border: none;
+    color: var(--text-secondary);
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+  }
+  
+  .logout-btn:hover {
+    background: var(--accent-color);
+    color: white;
+    transform: rotate(180deg);
+  }
+  
+  .user-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-right: 8px;
+  }
+  
+  .user-indicator i {
+    color: var(--primary-color);
+    font-size: var(--font-size-lg);
+  }
+  
+  .user-email {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  @media (max-width: 768px) {
+    .user-email {
+      display: none;
+    }
+    
+    .user-indicator {
+      padding: 4px 8px;
+    }
+  }
+`;
+document.head.appendChild(logoutButtonStyle);
