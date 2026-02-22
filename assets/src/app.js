@@ -1,4 +1,5 @@
 // src/app.js — Data Examiner — COMPLETE FIXED VERSION WITH ENHANCED MENU TOGGLE AND FIRST-VISIT HINTS
+// UPDATED: Removed toast notifications from Test Chart, Theme Toggle, Chart Toggle, First-visit, and Keyboard shortcut
 
 class ChartToggleManager {
     constructor() {
@@ -54,12 +55,7 @@ class ChartToggleManager {
         });
         document.dispatchEvent(event);
         
-        if (window.app && window.app.showToast) {
-            window.app.showToast(
-                'info', 
-                `Chart ${this.isCollapsed ? 'hidden' : 'visible'}`
-            );
-        }
+        // Toast notification removed - no popup when hiding/showing chart
         
         console.log('📊 Chart toggled:', this.isCollapsed ? 'collapsed' : 'expanded');
     }
@@ -156,12 +152,12 @@ class DataExaminerApp {
         }
     });
     
-    // Keyboard shortcut for menu toggle (Alt+M)
+    // Keyboard shortcut for menu toggle (Alt+M) - Toast removed
     document.addEventListener('keydown', (e) => {
         if (e.altKey && e.key === 'm') {
             e.preventDefault();
             this.toggleSidebar();
-            this.showToast('success', 'Menu toggled with Alt+M');
+            // Toast notification removed - no popup for keyboard shortcut
         }
     });
     
@@ -319,12 +315,11 @@ class DataExaminerApp {
     console.log('✅ Event listeners initialized');
   }
 
-  // Check if first visit and show hints (Option 4)
+  // Check if first visit and show hints - Toast removed
   checkFirstVisit() {
     if (!localStorage.getItem('visited')) {
         setTimeout(() => {
-            // Show toast notification
-            this.showToast('info', '👆 Click the colorful button in the top-left to open the menu!', 8000);
+            // Toast notification removed - no popup for first visit
             
             // Pulse the menu button
             const menuBtn = this.elements.menuToggle;
@@ -433,11 +428,12 @@ class DataExaminerApp {
     }
   }
 
+  // Theme Toggle - Toast removed
   toggleTheme() {
     this.isDarkMode = !this.isDarkMode;
     localStorage.setItem('darkMode', this.isDarkMode);
     this.applyTheme();
-    this.showToast('success', `Switched to ${this.isDarkMode ? 'dark' : 'light'} mode`);
+    // Toast notification removed - no popup when toggling theme
   }
 
   updateOnlineStatus(isOnline) {
@@ -1524,6 +1520,7 @@ class DataExaminerApp {
     this.showToast('success', 'Sample sales data loaded. Click "Analyze" to get insights!');
   }
 
+  // Test Chart - Toast removed
   testChart() {
     console.log('🧪 Testing chart system...');
     
@@ -1541,14 +1538,14 @@ class DataExaminerApp {
     if (window.chartManager) {
       const success = this.displayChartWithData(testData, 'bar', 'Test Chart - Sales Data');
       if (success) {
-        this.showToast('success', 'Test chart displayed!');
+        // Toast notification removed - no popup for successful test chart
         console.log('✅ Test chart should be visible');
       } else {
-        this.showToast('error', 'Failed to display test chart');
+        // Toast notification removed - no popup for failed test chart
         console.log('❌ Test chart failed');
       }
     } else {
-      this.showToast('error', 'Chart manager not initialized');
+      // Toast notification removed - no popup for chart manager not initialized
       console.log('❌ Chart manager not available');
     }
   }
