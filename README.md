@@ -3,7 +3,7 @@ Data Examiner is a sophisticated Progressive Web Application (PWA) that revoluti
 
  Here is the link to the AI Data Examiner Application-heroku where you can login to access the Ai Powered Data Analysis App system [link](https://data-examiner-app-768e153aaa39.herokuapp.com/login)
 
-   ![Data Examiner Application](assets\images\front-page.png)
+   ![Data Examiner Application](assets/images/front-page.png)
    
 
 
