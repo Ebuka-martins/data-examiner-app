@@ -117,9 +117,21 @@ Built on a modern Node.js/Express backend with a vanilla JavaScript frontend, Da
   - **Responsive Design:** Beautiful, adaptive UI that works on everything from smartphones to 4K monitors
 
   - **PWA Capabilities:** Offline support, installability, and native app-like experience
-  
+
 Data Examiner represents the future of data analysis - where powerful AI meets intuitive design to make data insights accessible to everyone, regardless of their technical expertise.  
 
+
+ ## Design 
+
+  ### Color Design
+  ![Color Design](assets/images/color-design.png)
+
+   - **Turquoise color** was used as the background color at the login page.
+   - **Black color** was used as the color of the form table
+   - **White color** was used as the write up color of the project
+   - **Orange color** is the color that displayed when you want to delete a project analysis
+   - **Soft Periwinkles** is the color button for the analysis button at the left
+   - **Glaucious color** is the color that displayed as the chart or bar
 
  ### 🔐 **Security & Privacy**
 
@@ -385,11 +397,12 @@ npm run dev
    ### **Heroku**
 
    ```
-    heroku create your-app-name
+    heroku create your-app-name   https://data-examiner-app-768e153aaa39.herokuapp.com/login
     heroku config:set GROQ_API_KEY=your_key_here
     git push heroku main
 
    ```
+   This is the Heroku project [link](https://data-examiner-app-768e153aaa39.herokuapp.com/login)
 
    ### **Render**
 
@@ -405,7 +418,10 @@ npm run dev
 
   - **Chart.js** for the beautiful visualization library
 
-  - **Font Awesome** for the amazing icons
+  - **Font Awesome** for the amazing icons [Font Awesome](https://fontawesome.com/)
+
+  - The Application color text logo munched for this README was gotten from [color co](https://coolors.co/).
+
 
   - All our contributors and users
 
