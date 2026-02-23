@@ -219,6 +219,134 @@ npm start
 
 
 
+## **🧪 API Documentation**
+
+### **EndPoint**
+
+  ```
+  POST /api/analyze/file
+Upload and analyze a file
+
+Body: multipart/form-data with file and optional question
+
+Response: Analysis with optional chart data
+
+POST /api/analyze/text
+Analyze pasted text data
+
+Body: { text, question, conversationId }
+
+Response: AI analysis with chart data
+
+POST /api/chat/followup
+Ask follow-up questions in a conversation
+
+Body: { question, conversationId }
+
+Response: Contextual AI response
+
+GET /api/conversation/:sessionId
+Retrieve conversation history
+
+Response: Array of conversation messages
+
+DELETE /api/conversation/:sessionId
+Clear conversation history
+
+GET /api/test/chart
+Test endpoint with sample chart data
+
+GET /api/health
+Health check endpoint
+
+
+  ```
+
+## **🔧 Advanced Configuration**
+
+### **Customizing AI Behavior**
+
+Edit the system prompt in server.js to change how the AI analyzes data:
+
+```
+// Modify the system message in analyzeDataWithAI function
+{
+  role: 'system',
+  content: 'Your custom prompt here...'
+}
+
+```
+
+### **Chart Customization**
+
+Modify chart.js to customize colors, animations, and behavior:
+
+```
+// Change color palette
+this.colorPalettes = {
+  primary: ['#your-colors-here'],
+  // ...
+}
+
+```
+
+### **Styling Themes**
+
+Edit CSS variables in styles.css to customize the look:
+
+```
+:root {
+  --primary-color: #your-color;
+  --primary-gradient: linear-gradient(135deg, #color1 0%, #color2 100%);
+  /* ... */
+}
+
+```
+
+### **🤝 Contributing**
+  
+  ### **Development Process**
+   
+   - Fork the repository
+   - Create a feature branch (git checkout -b feature/amazing-feature)
+   - Commit your changes (git commit -m 'Add amazing feature')
+   - Push to the branch (git push origin feature/amazing-feature)
+   - Open a Pull Request
+
+  ### **Code Style**
+
+    - Use 2 spaces for indentation
+    - Follow existing code patterns
+    - Add comments for complex logic
+    - Update documentation for new features
+
+  
+  ### **🧪 Testing**
+
+  ```
+  # Run tests (when implemented)
+npm test
+
+# Manual testing
+npm run dev
+# Visit http://localhost:3000/test-chart for chart testing
+
+  ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
