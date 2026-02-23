@@ -422,6 +422,9 @@ npm run dev
 
   - The Application color text logo munched for this README was gotten from [color co](https://coolors.co/).
 
+  - The tools used to screenshot various device breakpoint for responsive design for README was gotten from [am i responsive](https://ui.dev/amiresponsive).
+
+
 
   - All our contributors and users
 
