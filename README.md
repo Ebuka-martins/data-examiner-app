@@ -120,9 +120,9 @@ Built on a modern Node.js/Express backend with a vanilla JavaScript frontend, Da
 
 Data Examiner represents the future of data analysis - where powerful AI meets intuitive design to make data insights accessible to everyone, regardless of their technical expertise.  
 
-```
 ## **🏗 Updated Architecture Review**
 
+```
 data-examiner-app/
 ├── assets/
 │   ├── src/
