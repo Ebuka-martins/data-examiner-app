@@ -2473,3 +2473,29 @@ body {
         overflow-y: visible !important;
     }
 }
+
+/* Add to your styles.css */
+
+#exportPDF {
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+}
+
+#exportPDF:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+/* PDF export loading state */
+#exportPDF.exporting {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+#exportPDF.exporting i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

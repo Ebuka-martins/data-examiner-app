@@ -1,5 +1,5 @@
-// src/app.js — Data Examiner — COMPLETE WITH AUTHENTICATION
-// COMPLETED VERSION - All methods properly implemented
+// src/app.js — Data Examiner — COMPLETE WITH AUTHENTICATION AND PDF EXPORT
+// COMPLETED VERSION - All methods properly implemented with PDF export fix
 
 class ChartToggleManager {
     constructor() {
@@ -115,7 +115,7 @@ class DataExaminerApp {
       'sidebar', 'menuToggle', 'sidebarClose', 'sidebarOverlay', 'newChat', 'fileInput', 'uploadBtn',
       'dataInput', 'analyzePaste', 'analysisHistory', 'statusIndicator',
       'welcomeScreen', 'messagesContainer', 'chatContainer', 'chartSection',
-      'dataChart', 'chartType', 'exportChart', 'messageInput', 'attachBtn',
+      'dataChart', 'chartType', 'exportChart', 'exportPDF', 'messageInput', 'attachBtn',
       'sendBtn', 'fileIndicator', 'fileName', 'clearFile', 'quickUpload',
       'quickPaste', 'quickSample', 'loadingOverlay', 'installBtn',
       'themeToggle', 'toastContainer', 'testChartBtn', 'clearAllHistory', 'logoutBtn'
@@ -379,6 +379,14 @@ class DataExaminerApp {
       this.elements.exportChart.addEventListener('click', () => {
         console.log('💾 Export chart clicked');
         this.exportChart();
+      });
+    }
+    
+    // PDF Export button listener - FIXED VERSION
+    if (this.elements.exportPDF) {
+      this.elements.exportPDF.addEventListener('click', () => {
+        console.log('📄 Export PDF clicked');
+        this.exportAsPDF();
       });
     }
     
@@ -1644,6 +1652,83 @@ class DataExaminerApp {
       console.log('❌ Chart manager not available');
       this.showToast('error', 'Chart manager not initialized');
     }
+  }
+
+  /**
+   * Export current analysis as PDF - FIXED VERSION
+   */
+  async exportAsPDF() {
+    console.log('📄 Exporting analysis as PDF...');
+    
+    if (!this.conversationContext || this.conversationContext.length === 0) {
+        this.showToast('warning', 'No analysis to export');
+        return;
+    }
+    
+    this.showLoading(true);
+    
+    try {
+        // Initialize PDF exporter if not exists
+        if (!window.pdfExporter) {
+            window.pdfExporter = new PDFExporter();
+        }
+        
+        // Get the chart canvas
+        const chartCanvas = document.getElementById('dataChart');
+        
+        // Verify chart canvas exists and has content
+        if (!chartCanvas) {
+            console.warn('Chart canvas not found');
+        }
+        
+        // Prepare analysis data
+        const analysisData = {
+            analysis: this.getLatestAnalysisText(),
+            conversationId: this.currentSessionId,
+            messages: this.conversationContext
+        };
+        
+        console.log('Exporting PDF with:', {
+            messagesCount: this.conversationContext.length,
+            hasChart: !!chartCanvas,
+            sessionId: this.currentSessionId
+        });
+        
+        // Export the PDF
+        const result = await window.pdfExporter.exportAnalysis(
+            this.conversationContext,
+            chartCanvas,
+            analysisData,
+            {
+                filename: `data-analysis-${new Date().toISOString().slice(0, 10)}.pdf`,
+                includeMessages: true,
+                includeChart: true,
+                includeMetadata: true
+            }
+        );
+        
+        if (result.success) {
+            this.showToast('success', 'PDF exported successfully');
+        }
+    } catch (error) {
+        console.error('PDF export error:', error);
+        this.showToast('error', 'Failed to export PDF: ' + error.message);
+    } finally {
+        this.showLoading(false);
+    }
+  }
+
+  /**
+   * Get the latest analysis text from conversation
+   */
+  getLatestAnalysisText() {
+    // Find the latest assistant message
+    for (let i = this.conversationContext.length - 1; i >= 0; i--) {
+        if (this.conversationContext[i].role === 'assistant') {
+            return this.conversationContext[i].content;
+        }
+    }
+    return '';
   }
 }
 

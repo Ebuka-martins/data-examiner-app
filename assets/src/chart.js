@@ -363,6 +363,44 @@ class ChartManager {
     }
   }
 
+  /**
+   * Get high-quality chart image for PDF export
+   */
+  getChartImageForPDF() {
+    if (!this.currentChart || !this.canvas) {
+      console.warn('No chart to capture');
+      return null;
+    }
+    
+    try {
+      // Store original dimensions
+      const originalWidth = this.canvas.width;
+      const originalHeight = this.canvas.height;
+      
+      // Temporarily increase canvas size for better quality
+      this.canvas.width = originalWidth * 2;
+      this.canvas.height = originalHeight * 2;
+      
+      // Redraw chart at higher resolution
+      this.currentChart.resize();
+      this.currentChart.update();
+      
+      // Capture the image
+      const imageData = this.canvas.toDataURL('image/png', 1.0);
+      
+      // Restore original dimensions
+      this.canvas.width = originalWidth;
+      this.canvas.height = originalHeight;
+      this.currentChart.resize();
+      this.currentChart.update();
+      
+      return imageData;
+    } catch (error) {
+      console.error('Error capturing chart for PDF:', error);
+      return this.canvas.toDataURL('image/png', 1.0);
+    }
+  }
+
   updateChartType(type) {
     if (!this.currentChart || !this.chartData) {
       console.warn('No chart or data to update type');

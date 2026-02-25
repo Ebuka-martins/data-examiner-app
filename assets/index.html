@@ -232,8 +232,11 @@
                                 <option value="pie">Pie Chart</option>
                                 <option value="doughnut">Doughnut Chart</option>
                             </select>
-                            <button id="exportChart" class="chart-btn" aria-label="Export chart">
-                                <i class="fas fa-download" aria-hidden="true"></i> Export
+                            <button id="exportChart" class="chart-btn" aria-label="Export chart as PNG">
+                                <i class="fas fa-download" aria-hidden="true"></i> PNG
+                            </button>
+                            <button id="exportPDF" class="chart-btn" aria-label="Export as PDF" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);">
+                                <i class="fas fa-file-pdf"></i> PDF
                             </button>
                         </div>
                     </div>
@@ -301,6 +304,7 @@
     <div class="toast-container" id="toastContainer" role="alert"></div>
     
     <!-- Import JavaScript files -->
+    <script src="/src/pdf-export.js"></script>
     <script src="/src/app.js"></script>
     <script src="/src/api.js"></script>
     <script src="/src/chart.js"></script>

@@ -37,7 +37,10 @@
     "multer": "^2.0.0",
     "rate-limiter-flexible": "^2.4.2",
     "uuid": "^9.0.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.5.29",
+    "html2canvas": "^1.4.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
