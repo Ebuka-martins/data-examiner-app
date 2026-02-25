@@ -120,6 +120,90 @@ Built on a modern Node.js/Express backend with a vanilla JavaScript frontend, Da
 
 Data Examiner represents the future of data analysis - where powerful AI meets intuitive design to make data insights accessible to everyone, regardless of their technical expertise.  
 
+```
+## **🏗 Updated Architecture Review**
+
+data-examiner-app/
+├── assets/
+│   ├── src/
+│   │   ├── app.js
+│   │   ├── api.js
+│   │   ├── chart.js
+│   │   ├── pdf-export.js
+│   │   └── file-analyzer.js
+│   ├── index.html
+│   ├── login.html
+│   ├── styles.css
+│   ├── manifest.json
+│   ├── service-worker.js
+│   ├── favicon.ico
+│   ├── favicon/
+│   └── icons/
+├── server.js
+├── package.json
+├── .env
+├── uploads/
+└── .gitignore
+
+```
+## **🔹 Frontend Layer**
+ - 📌 app.js – **Main Controller**
+ - Handles DOM events
+ - Coordinates:
+   - File upload
+   - Chart rendering
+   - PDF export
+   - API communication
+
+## **📌 api.js – API Layer**
+  - Contains all fetch() calls
+  - Login requests
+  - Upload requests
+  - Data retrieval
+
+## **📌 chart.js – Visualization Layer**
+  - Creates and updates charts
+  - Should not handle business logic
+  - Should only render data
+
+## **📌 file-analyzer.js – Processing Layer**
+  - Parses CSV/Excel
+  - Extracts headers
+  - Formats data
+
+## **📌 pdf-export.js – Reporting Layer ⭐**
+  - Generate reports
+  - Export insights
+  - Convert charts to PDF
+  - Save analysis results
+  That transforms your app from:
+  - Simple analyzer
+  - Info
+  - Professional reporting tool
+
+## **🔹 Backend Layer**
+  ## 📌 server.js
+  - Express setup
+  - File uploads
+  - Authentication
+  - Static file serving
+
+## **🔹 PWA Layer**
+  ## 📌 manifest.json
+  - Makes it installable.
+
+  ## 📌 service-worker.js
+  Adds
+  - Offline support
+  - Caching
+  - Faster performance
+
+ ## **🔹 uploads**
+ Temporary storage.
+  - It's ignored in .gitignore
+  - Files are cleaned after processing
+
+
 
  ## Design 
 
@@ -442,6 +526,7 @@ npm run dev
   - Mobile apps (React Native)
 
 
+[Back to top](#Data-Examiner)
 
 
 
