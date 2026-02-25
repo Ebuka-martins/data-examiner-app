@@ -45,7 +45,7 @@ Data Examiner is a sophisticated Progressive Web Application (PWA) that revoluti
 
 - Multiple chart types (Bar, Line, Pie, Doughnut)
 - Automatic chart type selection based on data
-- Export charts as PNG images
+- Export charts as PNG or PDF images
 - Real-time chart type switching
 - Responsive design that works on all devices
 - Dark/Light theme support for charts
@@ -245,7 +245,7 @@ npm start
 ### **4. Interact with Results**
 - View AI-generated insights in a beautiful, structured format
 - Toggle between different chart types
-- Export charts as PNG images
+- Export charts as PNG or PDF images
 - Ask follow-up questions to dig deeper
 
 ### **5. Manage Your History**
